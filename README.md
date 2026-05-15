@@ -17,3 +17,7 @@ A TypeScript + Vite + Three.js browser visualizer for modeling apparent horizon 
 ## Build
 
 `npm run build`
+
+## Live Demo
+
+https://spsvortex.vercel.app
