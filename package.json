@@ -13,10 +13,13 @@
     "format:check": "prettier . --check"
   },
   "devDependencies": {
-    "eslint": "^10.3.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "jiti": "^2.7.0",
     "prettier": "^3.8.3",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.1",
+    "typescript-eslint": "^8.61.1",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
   },

@@ -19,10 +19,12 @@ Application bootstrap.
 This layer starts the app, creates the simulation, creates the renderer, and connects major systems together.
 
 Allowed:
+
 - initialize app
 - connect simulation, rendering, UI, and data systems
 
 Not allowed:
+
 - physics formulas
 - direct packet absorption rules
 - Three.js object internals outside setup code
@@ -32,6 +34,7 @@ Not allowed:
 Default configuration values.
 
 Examples:
+
 - initial mass
 - packet speed
 - packet spawn rate
@@ -39,10 +42,12 @@ Examples:
 - max packet count
 
 Allowed:
+
 - default settings
 - user-facing parameter ranges
 
 Not allowed:
+
 - simulation state
 - rendering code
 
@@ -51,17 +56,20 @@ Not allowed:
 Pure physics and math formulas.
 
 Examples:
+
 - `r_A = 2M`
 - mass functions
 - absorption condition
 - packet motion helpers
 
 Allowed:
+
 - pure functions
 - deterministic calculations
 - formulas
 
 Not allowed:
+
 - Three.js imports
 - DOM access
 - UI code
@@ -72,6 +80,7 @@ Not allowed:
 Simulation state and time stepping.
 
 This layer owns:
+
 - advanced time `v`
 - black hole state
 - energy packet state
@@ -80,11 +89,13 @@ This layer owns:
 - simulation snapshots
 
 Allowed:
+
 - classes like `Simulation`, `VaidyaBlackHole`, `EnergyPacket`
 - update loops
 - state ownership
 
 Not allowed:
+
 - Three.js rendering code
 - DOM manipulation
 - graph drawing
@@ -94,6 +105,7 @@ Not allowed:
 Three.js visual objects. This layer receives simulation snapshots and draws them.
 
 Allowed:
+
 - Three.js scene objects
 - horizon ring rendering
 - packet rendering
@@ -101,6 +113,7 @@ Allowed:
 - background rendering
 
 Not allowed:
+
 - physics formulas
 - mass updates
 - absorption decisions
@@ -111,12 +124,14 @@ Not allowed:
 Controls and readouts.
 
 Allowed:
+
 - pause/resume buttons
 - reset button
 - parameter inputs
 - live readouts
 
 Not allowed:
+
 - hidden physics calculations
 - direct mutation of private simulation fields
 - Three.js scene object ownership
@@ -126,11 +141,13 @@ Not allowed:
 History recording, graph data, and CSV export.
 
 Allowed:
+
 - record snapshots over time
 - prepare graph data
 - export CSV
 
 Not allowed:
+
 - physics formulas
 - simulation state mutation
 - rendering decisions
@@ -140,6 +157,7 @@ Not allowed:
 General helper functions that are not specific to Vaidya physics.
 
 Examples:
+
 - vector math
 - clamp
 - random helpers
@@ -170,6 +188,7 @@ Allowed dependency direction:
 `data -> simulation`
 
 Forbidden:
+
 - `physics` importing Three.js
 - `physics` importing UI
 - `physics` importing rendering
@@ -182,6 +201,7 @@ Forbidden:
 Rendering, UI, and data should read from a plain simulation snapshot.
 
 A snapshot contains:
+
 - advanced time
 - black hole state
 - energy packet states
@@ -197,6 +217,7 @@ Core shared types live in:
 `src/simulation/types.ts`
 
 These include:
+
 - `Vector2`
 - `MassFunctionMode`
 - `VaidyaBlackHoleState`
@@ -219,4 +240,3 @@ The data layer can export `targetHorizonRadius(t)` / `r_A(v)` curves for CFD mat
 ### Phase 3: Geometry Optimization
 
 The exported target behavior can be used as an input to an optimizer that searches for water-system geometry producing the desired analog horizon motion.
-
