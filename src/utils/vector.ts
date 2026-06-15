@@ -1,39 +1,42 @@
 export interface Vector {
-    x: number;
-    y: number;
+	x: number;
+	y: number;
 }
 
-export function distance(a:Vector,b:Vector):number{
-    const xd:number = a.x-b.x;
-    const yd:number = a.y-b.y;
-    return Math.sqrt(xd**2+yd**2);
+export function distance(vect1: Vector, vect2: Vector): number {
+	const xDistance: number = vect2.x - vect1.x;
+	const yDistance: number = vect2.y - vect1.y;
+
+	return Math.sqrt(xDistance**2 + yDistance**2);
 }
 
-export function add(a:Vector,b:Vector):Vector{
-    return{
-        x: a.x + b.x,
-        y: a.y + b.y
-    }
+export function add(vect1: Vector, vect2: Vector): Vector {
+	return {
+		x: vect1.x + vect2.x,
+		y: vect1.y + vect2.y
+	};
 }
 
-export function scale(v:Vector,s:number):Vector{
-    return{
-        x: v.x*s,
-        y: v.y*s
-    }
+export function scale(vect: Vector, scalar: number): Vector {
+	return {
+		x: scalar * vect.x,
+		y: scalar * vect.y
+	};
 }
 
-export function normalize(a:Vector):Vector{
-    const mag: number = Math.sqrt(a.x**2+a.y**2);
-    if (mag == 0){
-        return {
-            x: 0,
-            y: 0
-        }
-    }
+export function normalize(vect: Vector): Vector {
+	const mag: number = Math.sqrt(vect.x**2 + vect.y**2);
+
+	if (mag == 0){
+		return {
+			x: 0,
+			y: 0
+		};
+	}
+
     return {
-        x: a.x / mag,
-        y: a.y / mag
-    }
+        x: vect.x / mag,
+        y: vect.y / mag
+    };
 }
 
