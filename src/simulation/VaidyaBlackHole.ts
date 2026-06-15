@@ -1,34 +1,36 @@
-import {Vector} from "../utils/vector";
-import {apparentHorizonRadiusFromMass} from "../physics/horizon";
+import type { Vector2, VaidyaBlackHoleState } from "./types"
+import { apparentHorizonRadiusFromMass } from "../physics/horizon";
 
-export interface BlackHoleState{
-    mass: number;
-    position: Vector;
-    radius: number;
-}
 
-export class VaidyaBlackHole{
+export class VaidyaBlackHole {
     private mass: number;
-    private position: Vector;
+    private position: Vector2;
 
-    constructor(mass: number, position: Vector) {
-        if(mass < 0){
+    constructor(mass: number, position: Vector2) {
+        if (mass < 0) {
             throw new Error("mass less than zero");
         }
+
         this.mass = mass;
-        this.position ={
-            x: position.x,y: position.y
+        this.position = {
+            x: position.x,
+			y: position.y
         };
     }
 
-    public getMass():number{
+    public getMass():number {
         return this.mass;
     }
 
     public setMass(mass: number) {
-        if(mass < 0){
+        if (mass < 0){
             throw new Error("mass less than zero");
         }
+
+		if (mass !== mass) {
+			throw new Error("mass is NaN");
+		}
+
         this.mass = mass;
     }
 
@@ -36,23 +38,22 @@ export class VaidyaBlackHole{
         this.mass += mass;
     }
 
-    public getApparentHorizonRadius():number{
+    public getApparentHorizonRadius(): number {
         return apparentHorizonRadiusFromMass(this.mass);
     }
 
-    public getPosition(): Vector{
+    public getPosition(): Vector2 {
         return {
             x: this.position.x,
             y: this.position.y
         };
     }
 
-    public getState(): BlackHoleState{
+    public getState(): VaidyaBlackHoleState {
         return {
             mass: this.mass,
             position: this.position,
-            radius: this.getApparentHorizonRadius()
+            apparentHorizonRadius: this.getApparentHorizonRadius()
         };
     }
-
 }

@@ -1,4 +1,4 @@
-import type { Vector2 } from "../simulation";
+import type { Vector2 } from "../simulation/types";
 
 export function distance(vect1: Vector2, vect2: Vector2): number {
 	const xDistance: number = vect2.x - vect1.x;
