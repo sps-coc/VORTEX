@@ -33,8 +33,16 @@ export class VaidyaBlackHole {
     this.mass = mass;
   }
 
-  public addMass(mass: number) {
-    this.mass += mass;
+  public addMass(delta: number) {
+    if (delta !== delta) {
+      throw new Error('delta is NaN');
+    }
+
+    if (this.mass + delta < 0) {
+      throw new Error('resulting mass less than zero');
+    }
+
+    this.mass += delta;
   }
 
   public getApparentHorizonRadius(): number {
@@ -51,7 +59,7 @@ export class VaidyaBlackHole {
   public getState(): VaidyaBlackHoleState {
     return {
       mass: this.mass,
-      position: this.position,
+      position: { x: this.position.x, y: this.position.y },
       apparentHorizonRadius: this.getApparentHorizonRadius(),
     };
   }

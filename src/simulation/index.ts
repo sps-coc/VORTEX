@@ -6,3 +6,7 @@ export type {
   SimulationConfig,
   SimulationSnapshot,
 } from './types';
+
+export { VaidyaBlackHole } from './VaidyaBlackHole';
+export { EnergyPacket } from './EnergyPacket';
+export { Simulation } from './Simulation';
