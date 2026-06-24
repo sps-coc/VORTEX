@@ -36,3 +36,14 @@ export function normalize(vect: Vector2): Vector2 {
     y: vect.y / mag,
   };
 }
+
+export function subtract(vect1: Vector2, vect2: Vector2): Vector2 {
+  return {
+    x: vect1.x - vect2.x,
+    y: vect1.y - vect2.y,
+  };
+}
+
+export function magnitude(vect: Vector2): number {
+  return Math.sqrt(vect.x ** 2 + vect.y ** 2);
+}
