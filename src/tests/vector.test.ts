@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { distance, add, scale, normalize, subtract, magnitude } from '../utils/vector';
+import {
+  distance,
+  add,
+  scale,
+  normalize,
+  subtract,
+  magnitude,
+} from '../utils/vector';
 
 describe('distance', () => {
   it('returns 0 for identical vectors', () => {
@@ -43,8 +50,8 @@ describe('scale', () => {
 
 describe('normalize', () => {
   it('produces a unit vector', () => {
-    const n = normalize({ x: 3, y: 4 });
-    expect(Math.sqrt(n.x ** 2 + n.y ** 2)).toBeCloseTo(1);
+    const normalizedVector = normalize({ x: 3, y: 4 });
+    expect(Math.sqrt(normalizedVector.x ** 2 + normalizedVector.y ** 2)).toBeCloseTo(1);
   });
 
   it('returns (0,0) for the zero vector', () => {
@@ -52,9 +59,9 @@ describe('normalize', () => {
   });
 
   it('returns the same direction for an already-unit vector', () => {
-    const n = normalize({ x: 1, y: 0 });
-    expect(n.x).toBeCloseTo(1);
-    expect(n.y).toBeCloseTo(0);
+    const normalizedVector = normalize({ x: 1, y: 0 });
+    expect(normalizedVector.x).toBeCloseTo(1);
+    expect(normalizedVector.y).toBeCloseTo(0);
   });
 });
 

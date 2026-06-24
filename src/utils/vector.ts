@@ -1,49 +1,46 @@
 import type { Vector2 } from '../simulation/types';
 
-export function distance(vect1: Vector2, vect2: Vector2): number {
-  const xDistance: number = vect2.x - vect1.x;
-  const yDistance: number = vect2.y - vect1.y;
+export function distance(firstVector: Vector2, secondVector: Vector2): number {
+  const horizontalDelta: number = secondVector.x - firstVector.x;
+  const verticalDelta: number = secondVector.y - firstVector.y;
 
-  return Math.sqrt(xDistance ** 2 + yDistance ** 2);
+  return Math.sqrt(horizontalDelta ** 2 + verticalDelta ** 2);
 }
 
-export function add(vect1: Vector2, vect2: Vector2): Vector2 {
+export function add(firstVector: Vector2, secondVector: Vector2): Vector2 {
   return {
-    x: vect1.x + vect2.x,
-    y: vect1.y + vect2.y,
+    x: firstVector.x + secondVector.x,
+    y: firstVector.y + secondVector.y,
   };
 }
 
-export function scale(vect: Vector2, scalar: number): Vector2 {
+export function scale(vector: Vector2, scalar: number): Vector2 {
   return {
-    x: scalar * vect.x,
-    y: scalar * vect.y,
+    x: scalar * vector.x,
+    y: scalar * vector.y,
   };
 }
 
-export function normalize(vect: Vector2): Vector2 {
-  const mag: number = Math.sqrt(vect.x ** 2 + vect.y ** 2);
+export function normalize(vector: Vector2): Vector2 {
+  const vectorMagnitude: number = Math.sqrt(vector.x ** 2 + vector.y ** 2);
 
-  if (mag == 0) {
-    return {
-      x: 0,
-      y: 0,
-    };
+  if (vectorMagnitude === 0) {
+    return { x: 0, y: 0 };
   }
 
   return {
-    x: vect.x / mag,
-    y: vect.y / mag,
+    x: vector.x / vectorMagnitude,
+    y: vector.y / vectorMagnitude,
   };
 }
 
-export function subtract(vect1: Vector2, vect2: Vector2): Vector2 {
+export function subtract(firstVector: Vector2, secondVector: Vector2): Vector2 {
   return {
-    x: vect1.x - vect2.x,
-    y: vect1.y - vect2.y,
+    x: firstVector.x - secondVector.x,
+    y: firstVector.y - secondVector.y,
   };
 }
 
-export function magnitude(vect: Vector2): number {
-  return Math.sqrt(vect.x ** 2 + vect.y ** 2);
+export function magnitude(vector: Vector2): number {
+  return Math.sqrt(vector.x ** 2 + vector.y ** 2);
 }

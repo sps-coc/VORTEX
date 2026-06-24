@@ -8,7 +8,12 @@ export class EnergyPacket {
   private readonly energy: number;
   private absorbed: boolean;
 
-  constructor(id: string, position: Vector2, velocity: Vector2, energy: number) {
+  constructor(
+    id: string,
+    position: Vector2,
+    velocity: Vector2,
+    energy: number,
+  ) {
     this.id = id;
     this.position = { x: position.x, y: position.y };
     this.velocity = { x: velocity.x, y: velocity.y };
@@ -20,9 +25,9 @@ export class EnergyPacket {
    * Advance the packet's position by one time step.
    * Does nothing if the packet has already been absorbed.
    */
-  public step(dt: number): void {
+  public step(deltaTime: number): void {
     if (this.absorbed) return;
-    this.position = add(this.position, scale(this.velocity, dt));
+    this.position = add(this.position, scale(this.velocity, deltaTime));
   }
 
   /** Mark the packet as absorbed. Idempotent. */

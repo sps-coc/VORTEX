@@ -15,9 +15,9 @@ export function constantMass(initialMass: number): number {
 export function linearMass(
   initialMass: number,
   growthRate: number,
-  v: number,
+  advancedTime: number,
 ): number {
-  return initialMass + growthRate * v;
+  return initialMass + growthRate * advancedTime;
 }
 
 /**
@@ -34,11 +34,14 @@ export function linearMass(
 export function smoothPulseMass(
   initialMass: number,
   deltaMass: number,
-  center: number,
-  width: number,
-  v: number,
+  pulseCenter: number,
+  pulseWidth: number,
+  advancedTime: number,
 ): number {
-  return initialMass + deltaMass * 0.5 * (1 + Math.tanh((v - center) / width));
+  return (
+    initialMass +
+    deltaMass * 0.5 * (1 + Math.tanh((advancedTime - pulseCenter) / pulseWidth))
+  );
 }
 
 /**
@@ -47,19 +50,22 @@ export function smoothPulseMass(
  * Throws for 'packet-driven' — that mode's mass is owned by Simulation
  * (it accumulates absorbed packet energies) and cannot be derived from v alone.
  */
-export function evaluateMassFunction(config: SimulationConfig, v: number): number {
+export function evaluateMassFunction(
+  config: SimulationConfig,
+  advancedTime: number,
+): number {
   switch (config.massFunctionMode) {
     case 'constant':
       return constantMass(config.initialMass);
     case 'linear':
-      return linearMass(config.initialMass, config.linearGrowthRate, v);
+      return linearMass(config.initialMass, config.linearGrowthRate, advancedTime);
     case 'smooth-pulse':
       return smoothPulseMass(
         config.initialMass,
         config.pulseDeltaMass,
         config.pulseCenter,
         config.pulseWidth,
-        v,
+        advancedTime,
       );
     case 'packet-driven':
       throw new Error(
