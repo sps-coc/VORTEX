@@ -103,15 +103,26 @@ export class Simulation {
     const spawnAngleRadians = this.randomNumberGenerator() * 2 * Math.PI;
     const blackHolePosition = this.blackHole.getPosition();
     const spawnPosition = {
-      x: blackHolePosition.x + Math.cos(spawnAngleRadians) * this.config.spawnRadius,
-      y: blackHolePosition.y + Math.sin(spawnAngleRadians) * this.config.spawnRadius,
+      x:
+        blackHolePosition.x +
+        Math.cos(spawnAngleRadians) * this.config.spawnRadius,
+      y:
+        blackHolePosition.y +
+        Math.sin(spawnAngleRadians) * this.config.spawnRadius,
     };
     // Velocity: from spawn position toward the black hole center
-    const directionToCenter = normalize(subtract(blackHolePosition, spawnPosition));
+    const directionToCenter = normalize(
+      subtract(blackHolePosition, spawnPosition),
+    );
     const velocity = scale(directionToCenter, this.config.packetSpeed);
     const packetId = String(this.nextPacketId++);
     this.packets.push(
-      new EnergyPacket(packetId, spawnPosition, velocity, this.config.packetEnergy),
+      new EnergyPacket(
+        packetId,
+        spawnPosition,
+        velocity,
+        this.config.packetEnergy,
+      ),
     );
   }
 

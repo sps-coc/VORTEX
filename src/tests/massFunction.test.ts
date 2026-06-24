@@ -35,9 +35,9 @@ describe('linearMass', () => {
     const initialMassValue = 2;
     const growthRate = 0.1;
     for (const advancedTime of [0, 1, 5, 10, 50]) {
-      expect(linearMass(initialMassValue, growthRate, advancedTime)).toBeCloseTo(
-        initialMassValue + growthRate * advancedTime,
-      );
+      expect(
+        linearMass(initialMassValue, growthRate, advancedTime),
+      ).toBeCloseTo(initialMassValue + growthRate * advancedTime);
     }
   });
 });
@@ -58,14 +58,26 @@ describe('smoothPulseMass', () => {
   it('approaches M0 well before the pulse', () => {
     // v = center - 10*width — many widths before the pulse
     expect(
-      smoothPulseMass(initialMassValue, deltaMassValue, center, width, center - 10 * width),
+      smoothPulseMass(
+        initialMassValue,
+        deltaMassValue,
+        center,
+        width,
+        center - 10 * width,
+      ),
     ).toBeCloseTo(initialMassValue, 4);
   });
 
   it('approaches M0 + ΔM well after the pulse', () => {
     // v = center + 10*width — many widths after the pulse
     expect(
-      smoothPulseMass(initialMassValue, deltaMassValue, center, width, center + 10 * width),
+      smoothPulseMass(
+        initialMassValue,
+        deltaMassValue,
+        center,
+        width,
+        center + 10 * width,
+      ),
     ).toBeCloseTo(initialMassValue + deltaMassValue, 4);
   });
 
@@ -111,7 +123,10 @@ describe('evaluateMassFunction', () => {
 
   it('dispatches constant mode correctly', () => {
     expect(
-      evaluateMassFunction({ ...baseConfig, massFunctionMode: 'constant' }, 100),
+      evaluateMassFunction(
+        { ...baseConfig, massFunctionMode: 'constant' },
+        100,
+      ),
     ).toBe(2);
   });
 
@@ -132,7 +147,10 @@ describe('evaluateMassFunction', () => {
 
   it('throws for packet-driven mode', () => {
     expect(() =>
-      evaluateMassFunction({ ...baseConfig, massFunctionMode: 'packet-driven' }, 0),
+      evaluateMassFunction(
+        { ...baseConfig, massFunctionMode: 'packet-driven' },
+        0,
+      ),
     ).toThrow();
   });
 });

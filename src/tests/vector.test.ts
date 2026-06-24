@@ -51,7 +51,9 @@ describe('scale', () => {
 describe('normalize', () => {
   it('produces a unit vector', () => {
     const normalizedVector = normalize({ x: 3, y: 4 });
-    expect(Math.sqrt(normalizedVector.x ** 2 + normalizedVector.y ** 2)).toBeCloseTo(1);
+    expect(
+      Math.sqrt(normalizedVector.x ** 2 + normalizedVector.y ** 2),
+    ).toBeCloseTo(1);
   });
 
   it('returns (0,0) for the zero vector', () => {

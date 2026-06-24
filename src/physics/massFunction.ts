@@ -58,7 +58,11 @@ export function evaluateMassFunction(
     case 'constant':
       return constantMass(config.initialMass);
     case 'linear':
-      return linearMass(config.initialMass, config.linearGrowthRate, advancedTime);
+      return linearMass(
+        config.initialMass,
+        config.linearGrowthRate,
+        advancedTime,
+      );
     case 'smooth-pulse':
       return smoothPulseMass(
         config.initialMass,

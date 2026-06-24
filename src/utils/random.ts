@@ -13,7 +13,8 @@ export function createRng(seed: number): () => number {
     internalState += 0x6d2b79f5;
     let hashValue = internalState;
     hashValue = Math.imul(hashValue ^ (hashValue >>> 15), hashValue | 1);
-    hashValue ^= hashValue + Math.imul(hashValue ^ (hashValue >>> 7), hashValue | 61);
+    hashValue ^=
+      hashValue + Math.imul(hashValue ^ (hashValue >>> 7), hashValue | 61);
     return ((hashValue ^ (hashValue >>> 14)) >>> 0) / 4294967296;
   };
 }

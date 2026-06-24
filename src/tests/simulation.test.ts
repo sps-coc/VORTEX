@@ -41,7 +41,9 @@ describe('Simulation — constant mode', () => {
     );
     runSimulationSteps(simulation, 100);
     const snapshot = simulation.getSnapshot();
-    expect(snapshot.blackHole.mass).toBeCloseTo(defaultSimulationConfig.initialMass);
+    expect(snapshot.blackHole.mass).toBeCloseTo(
+      defaultSimulationConfig.initialMass,
+    );
   });
 
   it('apparent horizon radius equals 2 × mass', () => {
@@ -85,7 +87,10 @@ describe('Simulation — linear mode', () => {
     for (let i = 0; i < 100; i++) {
       simulation.update(0.05);
       const { blackHole } = simulation.getSnapshot();
-      expect(blackHole.apparentHorizonRadius).toBeCloseTo(2 * blackHole.mass, 10);
+      expect(blackHole.apparentHorizonRadius).toBeCloseTo(
+        2 * blackHole.mass,
+        10,
+      );
     }
   });
 });
@@ -141,7 +146,9 @@ describe('Simulation — packet-driven mode', () => {
     runSimulationSteps(simulation, 20, 0.05);
     const snapshot = simulation.getSnapshot();
     expect(snapshot.absorbedPacketCount).toBeGreaterThan(0);
-    expect(snapshot.blackHole.mass).toBeGreaterThan(fastAbsorbConfig.initialMass);
+    expect(snapshot.blackHole.mass).toBeGreaterThan(
+      fastAbsorbConfig.initialMass,
+    );
   });
 
   it('mass equals initialMass + sum of absorbed energies', () => {
@@ -294,7 +301,9 @@ describe('Simulation — maxPackets cap', () => {
       42,
     );
     runSimulationSteps(simulation, 50);
-    expect(simulation.getSnapshot().packets.length).toBeLessThanOrEqual(packetCapacity);
+    expect(simulation.getSnapshot().packets.length).toBeLessThanOrEqual(
+      packetCapacity,
+    );
   });
 });
 
@@ -314,8 +323,12 @@ describe('Simulation — deterministic / seeded RNG', () => {
     expect(firstSnapshot.blackHole.mass).toBe(secondSnapshot.blackHole.mass);
 
     for (let i = 0; i < firstSnapshot.packets.length; i++) {
-      expect(firstSnapshot.packets[i].position.x).toBe(secondSnapshot.packets[i].position.x);
-      expect(firstSnapshot.packets[i].position.y).toBe(secondSnapshot.packets[i].position.y);
+      expect(firstSnapshot.packets[i].position.x).toBe(
+        secondSnapshot.packets[i].position.x,
+      );
+      expect(firstSnapshot.packets[i].position.y).toBe(
+        secondSnapshot.packets[i].position.y,
+      );
     }
   });
 
@@ -331,8 +344,10 @@ describe('Simulation — deterministic / seeded RNG', () => {
     // Highly unlikely that first packet positions match with different seeds
     if (packetsFromFirstSim.length > 0 && packetsFromSecondSim.length > 0) {
       const positionsMatch =
-        packetsFromFirstSim[0].position.x === packetsFromSecondSim[0].position.x &&
-        packetsFromFirstSim[0].position.y === packetsFromSecondSim[0].position.y;
+        packetsFromFirstSim[0].position.x ===
+          packetsFromSecondSim[0].position.x &&
+        packetsFromFirstSim[0].position.y ===
+          packetsFromSecondSim[0].position.y;
       expect(positionsMatch).toBe(false);
     }
   });
