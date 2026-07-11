@@ -1,23 +1,99 @@
-# VORTEX
+# Ingoing Kerr–Vaidya Black Hole Visualization
 
-A TypeScript + Vite + Three.js browser visualizer for modeling apparent horizon growth in ingoing Vaidya black hole.
+A scientifically accurate, real-time WebGL2 visualization of an **ingoing (accreting)
+Kerr–Vaidya black hole**, built to monitor the properties needed to design a physical
+fluid experiment in which a growing water vortex plays the role of the black hole:
+rotation ↔ Kerr spin, expansion ↔ Vaidya mass growth.
 
-## Setup
+## Physics
 
-`npm install`
+- **Spacetime**: the ingoing Kerr–Vaidya metric in advanced coordinates (v, r, θ, ψ)
+  with a smooth monotone mass function M(v) — Dahal & Terno 2020 (arXiv:2008.13370)
+  Eq. 12; Dahal, Maharana, Simovic & Terno 2025 (arXiv:2311.02981) Eq. 2. PDFs of both
+  papers are in `references/normative/`.
+- **Ray tracing**: every pixel integrates a genuine null geodesic backward from the
+  observer with RK4 on the conformal Hamiltonian
+  H̃ = ρ²·½ g^{μν} p_μ p_ν. In these coordinates only g^rr depends on M(v), so p_ψ is
+  exactly conserved and the entire Vaidya modification is dp_v/dλ = M′(v) r p_r².
+  H̃ = 0 is monitored per ray as the null-constraint error (a selectable diagnostic
+  view).
+- **Observer**: while the simulation runs, the camera is a genuine timelike worldline
+  integrated in the Kerr–Vaidya spacetime (RK4 on the full Hamiltonian, u·u = −1
+  enforced): it free-falls unless the user fires bounded proper-acceleration thrust
+  (wheel = forward/backward, shift-drag = lateral), and dragging only rotates the
+  head. What is reachable is dictated by the geometry — hovering fails close to the
+  hole, and inside the horizon no thrust increases r. The worldline crosses the event
+  horizon regularly (advanced coordinates), the view continuing — aberration and sky
+  blueshift come from the tetrad of the actual four-velocity — until the journey ends
+  a safety buffer above the inner (Cauchy) horizon, where classical evolution stops
+  being trustworthy. Pausing freezes v and switches to a free, unphysical placement
+  camera ("setting the initial condition"), with progressive supersampling toward a
+  converged still; resuming starts a new worldline at rest there.
+- **Apparent horizon**: the θ-dependent correction z(θ) to r₀ = M + √(M² − a²) solves
+  the linearized horizon ODE (2020 paper Eq. 25, fixed to its cos 2θ form) with an
+  O(n) tridiagonal solve per frame; for accretion the horizon sits slightly inside r₀
+  (2025 paper Eq. 15).
+- **Matter**: the inflow tells the fluid-experiment story. At v = 0 it is a ring of
+  separated clumps at rest in the local ZAMO frame — "still water", already dragged
+  by the hole's rotation — and differential orbital shear (inner radii spin up first)
+  winds the same clump field into trailing spiral streams while the inner edge
+  migrates to the horizon and the matter heats. Density/emissivity patterns are
+  deliberately cinematic (the source of mass is out of scope), but the kinematics are
+  exact: the emitter four-velocity is a normalized ZAMO + infall + prograde-swirl
+  combination gated by the spin-up factor, and all gravitational redshift, Doppler
+  shift, beaming (g⁴), and color shifts come from g = 1/(p·u) along the traced
+  geodesic. The celestial sphere — anti-aliased point stars over a tilted galactic
+  band with dust lanes — is sampled only by rays that escape to the celestial radius.
 
-## Run Locally
+## Running
 
-`npm run dev`
+```sh
+npm install
+npm run dev        # http://127.0.0.1:5173
+```
 
-## Test
+Controls while running (physical): drag = look around, wheel = forward/backward
+thrust, shift/right-drag = lateral thrust, space = pause. Controls while paused
+(free placement): drag = orbit, shift/right-drag = pan, wheel = zoom, q/e = roll.
+The panel (top left) exposes spin, accretion rate, exposure, time scale,
+integration quality, and diagnostic views; the minimap (top right) shows the apparent
+horizon, ergosphere, photon-orbit band, ISCO, and the observer position, with live
+readouts. Everything in the readouts is also published on `window.kerrVaidyaState`,
+and `window.kerrVaidyaDiagnostics.captureFieldStatistics(field, thresholds)` reads
+back full-frame diagnostic statistics.
 
-`npm test`
+## Validation
 
-## Build
+```sh
+npm run check      # CPU physics: metric inverse, ZAMO tetrads, null rays,
+                   # p_v conservation in Kerr, traced shadow edge vs sqrt(27)M,
+                   # horizon ODE vs 2020 Fig. 1, Kerr limits (photon orbits, ISCO)
+```
 
-`npm run build`
+With the dev server running and Chrome listening on the DevTools port
+(`--remote-debugging-port=9223`):
 
-## Live Demo
+```sh
+npm run validate   # live render: WebGL health + screenshot, Schwarzschild shadow
+                   # angle vs Synge's formula, Kerr shadow asymmetry vs critical
+                   # impact parameters, frame-wide null-constraint tolerance
+```
 
-https://spsvortex.vercel.app
+## Contributing (UI)
+
+Two files are deliberately unimplemented and owned by UI contributors — each is
+self-contained: read only the file itself plus the argument types in
+`src/contributorApi.ts`, no physics involved.
+
+- `src/controls/pausedCameraControls.ts` — the paused-mode ("free placement")
+  camera gestures: orbit / pan / zoom against a mutable placement object, gated on
+  `isPaused()`, with live physical distance bounds. The running-mode flight
+  controls (thrust + head rotation) are already implemented in
+  `src/controls/flightControls.ts` and must not be duplicated.
+- `src/ui/controlPanel.ts` — the control panel: your own HTML/CSS/TS, positioned
+  anywhere; parameter sliders, a diagnostic-view selector, a pause/resume button,
+  real-time readout labels (values arrive every frame via `updateReadout`), and the
+  ready-made self-updating minimap element to mount wherever fits.
+
+`references/informative/` holds a Shadertoy Kerr renderer consulted for shader
+technique ideas only; nothing normative comes from it.

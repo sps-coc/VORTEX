@@ -1,0 +1,44 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #050608;
+  color: #f5f7fb;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+#app canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #020306;
+}
+/* Default placement only — the control-panel author (src/ui/controlPanel.ts) mounts
+   the minimap element and may reposition or restyle it freely in their own CSS. */
+.hud-minimap {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(8, 11, 18, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(140, 160, 200, 0.18);
+  width: fit-content;
+  user-select: none;
+  z-index: 10;
+}
+.hud-minimap canvas {
+  border-radius: 8px;
+}
