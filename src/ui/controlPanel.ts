@@ -7,6 +7,9 @@ import type { ControlPanel, ControlPanelContext, SimulationReadout } from "../co
 // this involves the physics: assigning to context.parameters and calling
 // context.setPaused are the only "outputs"; live values arrive via updateReadout.
 //
+// The laboratory/analogue side and the recorder are NOT yours — they live in
+// src/ui/dataPanel.ts. Do not duplicate them here.
+//
 // Required features:
 // 1. Parameter controls (sliders or your own widgets) bound to context.parameters:
 //      spin              0    .. 0.98   step 0.001
@@ -23,13 +26,18 @@ import type { ControlPanel, ControlPanelContext, SimulationReadout } from "../co
 //    isPaused() inside updateReadout rather than assuming your button is the only
 //    writer.
 // 4. Real-time labels, refreshed in updateReadout (called once per frame), showing
-//    every SimulationReadout field. Suggested formatting:
-//      mass, radii, timeDilation        -> value.toFixed(2..4)
-//      massDerivative                   -> value.toExponential(2)
-//      advancedTime, frameMilliseconds  -> value.toFixed(1)
-//      observerMode / insideHorizon     -> text badge ("free fall — INSIDE HORIZON")
-//      journeyEnded                     -> a notice like "inner horizon reached —
-//                                          journey ends here" when true
+//    readout.blackHole, readout.observer and readout.rendering. Every field of those
+//    three is worth surfacing; group them as you see fit. Suggested formatting:
+//      masses, radii, areas, advancedTimeRate  -> value.toFixed(2..4)
+//      massDerivative, hawkingTemperature      -> value.toExponential(2)
+//      advancedTime, frameMilliseconds         -> value.toFixed(1)
+//      angles                                  -> degrees, value.toFixed(1)
+//      observer.mode / insideHorizon           -> text badge ("free fall — INSIDE HORIZON")
+//      observer.journeyEnded                   -> a notice like "inner horizon reached —
+//                                                 journey ends here" when true
+//    readout.observer.specificEnergy, specificAngularMomentum and carterConstant are
+//    constants of the motion in Kerr; under Vaidya accretion they drift, so showing
+//    them next to each other makes the whole point of the simulation visible.
 //    Consider throttling DOM writes if you add heavy styling (e.g. update text at
 //    10 Hz) but a straight textContent update every frame is fine.
 // 5. Mount context.minimapElement (a finished, self-updating top-down map) wherever

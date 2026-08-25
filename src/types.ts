@@ -1,3 +1,5 @@
+import type { AnalogueMatchingInvariant } from "./physics/fluidVortexAnalogue.ts";
+
 export interface SimulationState {
   spin: number;
   initialMass: number;
@@ -9,4 +11,8 @@ export interface SimulationState {
   diagnosticField: number;
   maximumStepCount: number;
   paused: boolean;
+  laboratoryHorizonRadiusMetres: number;
+  laboratoryLayerDepthMetres: number;
+  laboratoryTankRadiusMetres: number;
+  analogueMatchedInvariant: AnalogueMatchingInvariant;
 }

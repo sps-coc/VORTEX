@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Recorded telemetry: large, and regenerable with `npm run capture`. Commit a run
+# only when a committed figure depends on it (force-add it).
+data/telemetry/*.jsonl
+data/telemetry/*.csv
+
 # Claude helper docs and config
 .notes/
 CLAUDE.md

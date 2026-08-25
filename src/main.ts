@@ -31,18 +31,12 @@ import {
   lookDirectionTetradFrame,
   type ObserverUniformState
 } from "./observer/physicalObserver.ts";
-import {
-  CoordinateIndex,
-  evaluateErgosphereRadius,
-  evaluateHorizonArea,
-  evaluateInnermostStableCircularOrbitRadius,
-  evaluateOuterKerrRadius,
-  evaluatePhotonOrbitRadii,
-  evaluateShadowImpactParameters,
-  raiseMomentumIndex,
-  type GeodesicState
-} from "./physics/kerrVaidyaGeometry.ts";
+import { CoordinateIndex, evaluateOuterKerrRadius, type GeodesicState } from "./physics/kerrVaidyaGeometry.ts";
+import { AnalogueMatchingInvariant } from "./physics/fluidVortexAnalogue.ts";
+import { buildSimulationFrameState } from "./data/simulationFrameState.ts";
+import { createTelemetryRecorder } from "./data/telemetryRecorder.ts";
 import { createControlPanel } from "./ui/controlPanel.ts";
+import { createDataPanel } from "./ui/dataPanel.ts";
 import { createMinimap } from "./ui/minimap.ts";
 import { attachFlightControls, type FlightInputState } from "./controls/flightControls.ts";
 import { attachPausedCameraControls } from "./controls/pausedCameraControls.ts";
@@ -88,44 +82,32 @@ const simulation: SimulationState = {
   timeScale: 1.25,
   diagnosticField: DiagnosticField.Radiance,
   maximumStepCount: 380,
-  paused: false
+  paused: false,
+  // Bench-scale tank chosen so every tunable validity flag passes at the default
+  // spin: ~63 L/min of drain, a shallow-water ratio of 0.19, and an m = 3
+  // superradiance threshold an order of magnitude below the dispersive ceiling.
+  laboratoryHorizonRadiusMetres: 0.05,
+  laboratoryLayerDepthMetres: 0.01,
+  laboratoryTankRadiusMetres: 0.4,
+  analogueMatchedInvariant: AnalogueMatchingInvariant.HorizonAngularVelocity
 };
 
 declare global {
   interface Window {
-    kerrVaidyaState?: {
-      advancedTime: number;
-      mass: number;
-      massDerivative: number;
-      spin: number;
-      horizon: {
-        baseRadius: number;
-        maximumCorrection: number;
-        equatorialRadius: number;
-        area: number;
-        samples: Array<{ theta: number; radius: number; correction: number }>;
-      };
-      characteristicRadii: {
-        ergosphereEquatorial: number;
-        photonOrbits: { prograde: number; retrograde: number };
-        innermostStableOrbit: number;
-        shadowImpactParameters: { prograde: number; retrograde: number };
-      };
-      observer: {
-        coordinates: [number, number, number, number];
-        mode: "paused" | "free-fall";
-        insideHorizon: boolean;
-        timeDilation: number;
-        verticalFov: number;
-      };
-      rendering: {
-        renderScale: number;
-        radianceFramebuffer: [number, number];
-        nullConstraintTolerance: number;
-        averageFrameMs: number;
-        diagnosticField: number;
-        maximumStepCount: number;
-      };
+    // The complete per-frame readout, plus the theta-resolved horizon that is too
+    // bulky to repeat in every recorded line.
+    kerrVaidyaState?: SimulationReadout & {
+      apparentHorizonProfile: Array<{ theta: number; radius: number; correction: number }>;
+      nullConstraintTolerance: number;
+    };
+    // Headless data collection: start a recording, let it run, then pull the JSONL
+    // out in chunks with drain().
+    kerrVaidyaRecorder?: {
+      setRecording: (recording: boolean) => void;
+      setSampleIntervalSeconds: (seconds: number) => void;
+      markEvent: (label: string, detail?: Record<string, number | string | boolean>) => void;
+      status: () => SimulationReadout["recording"];
+      drain: () => string;
     };
     kerrVaidyaControls?: {
       setSimulation: (partial: Partial<SimulationState>) => void;
@@ -203,17 +185,22 @@ const flightInput: FlightInputState = {
   lastPointer: new Vector2()
 };
 
-const clock = { advancedTime: 0, lastTimestamp: performance.now() };
-const journey: { worldline: GeodesicState | null; ended: boolean; timeDilation: number } = {
+const clock = { advancedTime: 0, lastTimestamp: performance.now(), startTimestamp: performance.now() };
+const journey: { worldline: GeodesicState | null; ended: boolean; properTimeElapsed: number } = {
   worldline: null,
   ended: false,
-  timeDilation: 1
+  properTimeElapsed: 0
 };
 // The journey ends a buffer above the inner (Cauchy) horizon, where the classical
 // prediction stops being trustworthy and the integrator's gradients blow up.
 const JourneyEndDepthFraction = 0.12;
 const MinimumPausedDistanceHorizonFactor = 1.05;
 const MaximumPausedDistanceCelestialFactor = 0.9;
+
+const AnalogueMatchingLabels: Array<[AnalogueMatchingInvariant, string]> = [
+  [AnalogueMatchingInvariant.HorizonAngularVelocity, "match horizon angular velocity"],
+  [AnalogueMatchingInvariant.ErgosphereRadiusRatio, "match ergosphere radius ratio"]
+];
 
 const DiagnosticFieldLabels: Array<[number, string]> = [
   [DiagnosticField.Radiance, "radiance"],
@@ -248,6 +235,13 @@ const panel = createControlPanel({
     simulation.paused = paused;
   },
   minimapElement: minimap.element
+});
+const recorder = createTelemetryRecorder(simulation);
+const dataPanel = createDataPanel({
+  mountRoot: document.body,
+  parameters: simulation,
+  analogueMatchingOptions: AnalogueMatchingLabels.map(([value, label]) => ({ value, label })),
+  recording: recorder.controls
 });
 
 function updateCartesianCamera(): void {
@@ -303,6 +297,7 @@ function beginJourneyFromPausedCamera(): void {
     simulation.celestialRadius
   );
   journey.ended = false;
+  journey.properTimeElapsed = 0;
   const pausedObserver = computePausedObserver(mass);
   const [forwardRadial, forwardPolar, forwardAzimuthal] = pausedObserver.forwardTetradFrame;
   flightInput.lookPitch = Math.asin(Math.max(-1, Math.min(1, -forwardPolar)));
@@ -328,8 +323,8 @@ function advanceJourney(deltaSeconds: number): ObserverUniformState {
   let advanced = applyProperAcceleration(worldline, simulation.spin, simulation, thrust, Math.max(properTimeDelta, 1e-4));
   advanced = advanceWorldline(advanced, simulation.spin, simulation, properTimeDelta);
   journey.worldline = advanced;
+  journey.properTimeElapsed += properTimeDelta;
   clock.advancedTime = advanced.position[CoordinateIndex.AdvancedTime];
-  journey.timeDilation = raiseMomentumIndex(advanced, simulation.spin, simulation)[CoordinateIndex.AdvancedTime];
 
   const horizons = horizonRadiiAt(clock.advancedTime, simulation.spin, simulation);
   const journeyEndRadius = horizons.inner + JourneyEndDepthFraction * Math.max(horizons.outer - horizons.inner, 0.05);
@@ -446,51 +441,13 @@ function chooseTemporalMix(): number {
   );
 }
 
-function publishSimulationState(
-  mass: number,
-  massDerivative: number,
-  baseHorizonRadius: number,
-  maximumHorizonCorrection: number,
-  horizonSamples: Array<{ theta: number; radius: number; correction: number }>,
-  observer: ObserverUniformState,
-  insideHorizon: boolean
-): void {
-  const equatorialHorizonRadius = horizonSamples[Math.floor(horizonSamples.length / 2)].radius;
-  window.kerrVaidyaState = {
-    advancedTime: clock.advancedTime,
-    mass,
-    massDerivative,
-    spin: simulation.spin,
-    horizon: {
-      baseRadius: baseHorizonRadius,
-      maximumCorrection: maximumHorizonCorrection,
-      equatorialRadius: equatorialHorizonRadius,
-      area: evaluateHorizonArea(mass, simulation.spin),
-      samples: horizonSamples
-    },
-    characteristicRadii: {
-      ergosphereEquatorial: evaluateErgosphereRadius(mass, simulation.spin, Math.PI / 2),
-      photonOrbits: evaluatePhotonOrbitRadii(mass, simulation.spin),
-      innermostStableOrbit: evaluateInnermostStableCircularOrbitRadius(mass, simulation.spin),
-      shadowImpactParameters: evaluateShadowImpactParameters(mass, simulation.spin)
-    },
-    observer: {
-      coordinates: observer.cameraCoordinates,
-      mode: simulation.paused ? "paused" : "free-fall",
-      insideHorizon,
-      timeDilation: journey.timeDilation,
-      verticalFov: uniforms.verticalFov.value
-    },
-    rendering: {
-      renderScale: renderState.scale,
-      radianceFramebuffer: [renderState.width, renderState.height],
-      nullConstraintTolerance: NullConstraintTolerance,
-      averageFrameMs: renderState.averageFrameMs,
-      diagnosticField: simulation.diagnosticField,
-      maximumStepCount: simulation.maximumStepCount
-    }
-  };
-}
+window.kerrVaidyaRecorder = {
+  setRecording: recorder.controls.setRecording,
+  setSampleIntervalSeconds: recorder.controls.setSampleIntervalSeconds,
+  markEvent: recorder.controls.markEvent,
+  status: recorder.readoutStatus,
+  drain: recorder.drain
+};
 
 window.kerrVaidyaControls = {
   setSimulation: (partial) => Object.assign(simulation, partial),
@@ -581,7 +538,6 @@ function frame(timestamp: number): void {
       syncOrbitPlacementFromWorldline(journey.worldline);
       journey.worldline = null;
     }
-    journey.timeDilation = 1;
     observer = computePausedObserver(evaluateMassFunction(clock.advancedTime, simulation).mass);
   } else {
     if (!journey.worldline) beginJourneyFromPausedCamera();
@@ -615,46 +571,52 @@ function frame(timestamp: number): void {
   accumulationState.frameCount = (accumulationState.frameCount + 1) % FrameSeedPeriod;
   uniforms.frameSeed.value = accumulationState.frameCount;
 
-  const readout: SimulationReadout = {
-    advancedTime: clock.advancedTime,
-    mass: massState.mass,
-    massDerivative: massState.massDerivative,
-    spin: simulation.spin,
-    horizonEquatorialRadius: horizon.samples[Math.floor(horizon.samples.length / 2)].radius,
-    horizonArea: evaluateHorizonArea(massState.mass, simulation.spin),
-    ergosphereEquatorialRadius: evaluateErgosphereRadius(massState.mass, simulation.spin, Math.PI / 2),
-    photonOrbitRadii: evaluatePhotonOrbitRadii(massState.mass, simulation.spin),
-    innermostStableOrbitRadius: evaluateInnermostStableCircularOrbitRadius(massState.mass, simulation.spin),
-    observerRadius: cameraRadius,
-    observerMode: simulation.paused ? "paused" : "free-fall",
+  const temporalMix = chooseTemporalMix();
+
+  const readout: SimulationReadout = buildSimulationFrameState({
+    simulation,
+    massState,
+    apparentHorizon: horizon,
+    observer,
+    worldline: journey.worldline,
+    properTimeElapsed: journey.properTimeElapsed,
     insideHorizon,
-    timeDilation: journey.timeDilation,
     journeyEnded: journey.ended,
-    frameMilliseconds: renderState.averageFrameMs
-  };
+    verticalFov: uniforms.verticalFov.value,
+    rendering: {
+      frameMilliseconds: renderState.averageFrameMs,
+      renderScale: renderState.scale,
+      framebufferWidth: renderState.width,
+      framebufferHeight: renderState.height,
+      accumulatedStaticFrames: accumulationState.staticFrameCount
+    },
+    recording: recorder.readoutStatus()
+  });
+
   panel.updateReadout(readout);
+  dataPanel.updateReadout(readout);
   minimap.update({
-    horizonEquatorialRadius: readout.horizonEquatorialRadius,
-    ergosphereEquatorialRadius: readout.ergosphereEquatorialRadius,
-    photonOrbitRadii: readout.photonOrbitRadii,
-    innermostStableOrbitRadius: readout.innermostStableOrbitRadius,
+    horizonEquatorialRadius: readout.blackHole.apparentHorizonEquatorialRadius,
+    ergosphereEquatorialRadius: readout.blackHole.ergosphereEquatorialRadius,
+    photonOrbitRadii: readout.blackHole.photonOrbitRadii,
+    innermostStableOrbitRadius: readout.blackHole.innermostStableOrbitRadius,
     celestialRadius: simulation.celestialRadius,
     cameraRadius,
     cameraAzimuthalAngle: observer.cameraCoordinates[CoordinateIndex.AzimuthalAngle],
     cameraPolarAngle: observer.cameraCoordinates[CoordinateIndex.PolarAngle],
     verticalFov: uniforms.verticalFov.value
   });
-  publishSimulationState(
-    massState.mass,
-    massState.massDerivative,
-    horizon.baseRadius,
-    horizon.maximumCorrection,
-    horizon.samples,
-    observer,
-    insideHorizon
-  );
+  recorder.offerFrame({
+    readout,
+    horizonSamples: horizon.samples,
+    elapsedSeconds: (timestamp - clock.startTimestamp) / 1000
+  });
+  window.kerrVaidyaState = {
+    ...readout,
+    apparentHorizonProfile: horizon.samples,
+    nullConstraintTolerance: NullConstraintTolerance
+  };
 
-  const temporalMix = chooseTemporalMix();
   renderer.setRenderTarget(radianceTarget);
   renderer.render(scene, fullscreenCamera);
   renderer.setRenderTarget(null);
