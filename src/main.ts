@@ -301,7 +301,7 @@ function beginJourneyFromPausedCamera(): void {
   const pausedObserver = computePausedObserver(mass);
   const [forwardRadial, forwardPolar, forwardAzimuthal] = pausedObserver.forwardTetradFrame;
   flightInput.lookPitch = Math.asin(Math.max(-1, Math.min(1, -forwardPolar)));
-  flightInput.lookYaw = Math.atan2(forwardAzimuthal, -forwardRadial);
+  flightInput.lookYaw = Math.atan2(-forwardAzimuthal, -forwardRadial);
 }
 
 function advanceJourney(deltaSeconds: number): ObserverUniformState {
@@ -595,6 +595,17 @@ function frame(timestamp: number): void {
 
   panel.updateReadout(readout);
   dataPanel.updateReadout(readout);
+  // Project the look direction's tetrad components (along rhat, thetahat, psihat)
+  // onto the equatorial plane of the top-down map: rhat and thetahat contribute
+  // sin/cos theta of in-plane radial heading, psihat is the in-plane tangential one.
+  const polarAngle = observer.cameraCoordinates[CoordinateIndex.PolarAngle];
+  const azimuthalAngle = observer.cameraCoordinates[CoordinateIndex.AzimuthalAngle];
+  const [forwardRadial, forwardPolar, forwardAzimuthal] = observer.forwardTetradFrame;
+  const inPlaneRadial = forwardRadial * Math.sin(polarAngle) + forwardPolar * Math.cos(polarAngle);
+  const lookMapAngle = Math.atan2(
+    inPlaneRadial * Math.sin(azimuthalAngle) + forwardAzimuthal * Math.cos(azimuthalAngle),
+    inPlaneRadial * Math.cos(azimuthalAngle) - forwardAzimuthal * Math.sin(azimuthalAngle)
+  );
   minimap.update({
     horizonEquatorialRadius: readout.blackHole.apparentHorizonEquatorialRadius,
     ergosphereEquatorialRadius: readout.blackHole.ergosphereEquatorialRadius,
@@ -602,9 +613,10 @@ function frame(timestamp: number): void {
     innermostStableOrbitRadius: readout.blackHole.innermostStableOrbitRadius,
     celestialRadius: simulation.celestialRadius,
     cameraRadius,
-    cameraAzimuthalAngle: observer.cameraCoordinates[CoordinateIndex.AzimuthalAngle],
-    cameraPolarAngle: observer.cameraCoordinates[CoordinateIndex.PolarAngle],
-    verticalFov: uniforms.verticalFov.value
+    cameraAzimuthalAngle: azimuthalAngle,
+    cameraPolarAngle: polarAngle,
+    lookMapAngle,
+    horizontalFov: 2 * Math.atan(Math.tan(uniforms.verticalFov.value / 2) * camera.aspect)
   });
   recorder.offerFrame({
     readout,

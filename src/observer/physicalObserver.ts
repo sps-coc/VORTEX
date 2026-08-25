@@ -230,7 +230,12 @@ export function advanceWorldline(
 }
 
 // Look direction as angles in the local tetrad: yaw/pitch relative to the
-// "toward the hole, north up" basis A = -rhat, B = psihat, C = -thetahat.
+// "toward the hole, north up" basis, forward = -rhat and up = -thetahat at zero.
+// The (rhat, thetahat, psihat) triad is LEFT-handed in the flat embedding shared by
+// the paused camera and the minimap (spin axis = +y, psi = atan2(z, x)), so the
+// component-space cross products below are argument-swapped: this yields a screen
+// basis with right = forward x up in the embedded sense, matching the paused
+// three.js camera instead of mirroring the image left-right on every resume.
 export function lookDirectionTetradFrame(lookYaw: number, lookPitch: number): {
   forward: TetradFrameVector;
   right: TetradFrameVector;
@@ -240,11 +245,11 @@ export function lookDirectionTetradFrame(lookYaw: number, lookPitch: number): {
   const forward: TetradFrameVector = [
     -cosPitch * Math.cos(lookYaw),
     -Math.sin(lookPitch),
-    cosPitch * Math.sin(lookYaw)
+    -cosPitch * Math.sin(lookYaw)
   ];
   const worldUp: TetradFrameVector = [0, -1, 0];
-  const right: TetradFrameVector = normalizeTetradFrame(crossTetradFrame(forward, worldUp));
-  const up: TetradFrameVector = crossTetradFrame(right, forward);
+  const right: TetradFrameVector = normalizeTetradFrame(crossTetradFrame(worldUp, forward));
+  const up: TetradFrameVector = crossTetradFrame(forward, right);
   return { forward, right, up };
 }
 

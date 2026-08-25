@@ -7,11 +7,15 @@ export interface MinimapState {
   cameraRadius: number;
   cameraAzimuthalAngle: number;
   cameraPolarAngle: number;
-  verticalFov: number;
+  // Heading of the camera's look direction projected onto the equatorial map plane,
+  // in the same atan2 convention as cameraAzimuthalAngle positions the marker.
+  lookMapAngle: number;
+  horizontalFov: number;
 }
 
 const MapPixelSize = 216;
 const MapEdgeMargin = 6;
+const ViewWedgeLength = 30;
 
 const MapColors = {
   background: "rgba(5, 8, 14, 0.82)",
@@ -77,15 +81,14 @@ export function createMinimap(): { element: HTMLElement; update: (state: Minimap
     drawCircle(state.horizonEquatorialRadius, MapColors.horizon, state.celestialRadius, true);
     drawCircle(state.horizonEquatorialRadius, MapColors.horizonRim, state.celestialRadius, false);
 
-    // Top-down equatorial projection: +x right, +z down; the wedge points from the
-    // observer toward the hole with the camera's horizontal field of view.
+    // Top-down equatorial projection: +x right, +z down; the wedge opens along the
+    // camera's actual look heading with the camera's horizontal field of view.
     const cameraMapRadius = compressRadius(state.cameraRadius * Math.sin(state.cameraPolarAngle), state.celestialRadius);
     const cameraX = MapPixelSize / 2 + cameraMapRadius * Math.cos(state.cameraAzimuthalAngle);
     const cameraY = MapPixelSize / 2 + cameraMapRadius * Math.sin(state.cameraAzimuthalAngle);
-    const towardCenter = Math.atan2(MapPixelSize / 2 - cameraY, MapPixelSize / 2 - cameraX);
     context.beginPath();
     context.moveTo(cameraX, cameraY);
-    context.arc(cameraX, cameraY, cameraMapRadius, towardCenter - state.verticalFov / 2, towardCenter + state.verticalFov / 2);
+    context.arc(cameraX, cameraY, ViewWedgeLength, state.lookMapAngle - state.horizontalFov / 2, state.lookMapAngle + state.horizontalFov / 2);
     context.closePath();
     context.fillStyle = MapColors.viewWedge;
     context.fill();

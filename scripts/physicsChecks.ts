@@ -23,6 +23,7 @@ import {
 } from "../src/physics/kerrVaidyaGeometry.ts";
 import { evaluateMassFunction, type MassFunctionParameters } from "../src/physics/massFunction.ts";
 import { solveApparentHorizon } from "../src/physics/apparentHorizon.ts";
+import { lookDirectionTetradFrame } from "../src/observer/physicalObserver.ts";
 import {
   AnalogueMatchingInvariant,
   evaluateFluidVortexAnalogue,
@@ -651,6 +652,56 @@ const analogueMassParameters: MassFunctionParameters = { initialMass: 1, accreti
 }
 
 // --------------------------------------------------------------------------------
+// Screen-basis handedness: the (rhat, thetahat, psihat) triad is left-handed in the
+// flat embedding (spin axis = +y, psi = atan2(z, x)), so the running-mode look basis
+// must come out right-handed IN THE EMBEDDING (right = forward x up), or the view
+// mirrors relative to the paused three.js camera and the minimap.
+{
+  const cross3 = (a: number[], b: number[]) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0]
+  ];
+  let worstHandednessError = 0;
+  let worstRoundTripError = 0;
+  for (let trial = 0; trial < 200; trial += 1) {
+    const yaw = (Math.random() - 0.5) * 2 * Math.PI;
+    const pitch = (Math.random() - 0.5) * 2.8;
+    const theta = 0.1 + 2.9 * Math.random();
+    const phi = (Math.random() - 0.5) * 2 * Math.PI;
+    const look = lookDirectionTetradFrame(yaw, pitch);
+
+    const radialUnit = [Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi)];
+    const polarUnit = [Math.cos(theta) * Math.cos(phi), -Math.sin(theta), Math.cos(theta) * Math.sin(phi)];
+    const azimuthalUnit = [-Math.sin(phi), 0, Math.cos(phi)];
+    const embed = (frame: [number, number, number]) =>
+      [0, 1, 2].map((axis) => frame[0] * radialUnit[axis] + frame[1] * polarUnit[axis] + frame[2] * azimuthalUnit[axis]);
+
+    const forwardEmbedded = embed(look.forward);
+    const rightEmbedded = embed(look.right);
+    const upEmbedded = embed(look.up);
+    const expectedRight = cross3(forwardEmbedded, upEmbedded);
+    worstHandednessError = Math.max(
+      worstHandednessError,
+      Math.hypot(...expectedRight.map((component, axis) => component - rightEmbedded[axis]))
+    );
+
+    const recoveredYaw = Math.atan2(-look.forward[2], -look.forward[0]);
+    const yawMismatch = Math.abs(Math.atan2(Math.sin(recoveredYaw - yaw), Math.cos(recoveredYaw - yaw)));
+    worstRoundTripError = Math.max(worstRoundTripError, yawMismatch);
+  }
+  check(
+    "running-mode screen basis is right-handed in the flat embedding",
+    worstHandednessError < 1e-9,
+    `max |forward x up - right| ${worstHandednessError}`
+  );
+  check(
+    "look yaw round-trips through the forward vector",
+    worstRoundTripError < 1e-9,
+    `max yaw mismatch ${worstRoundTripError}`
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} check(s) failed`);
   process.exit(1);
