@@ -15,6 +15,7 @@ import {
   evaluateOuterKerrRadius,
   evaluatePhotonOrbitRadii,
   evaluateShadowImpactParameters,
+  evaluateHorizonThermodynamics,
   evaluateZeroAngularMomentumObserver,
   type FourVector,
   type GeodesicState,
@@ -22,6 +23,14 @@ import {
 } from "../src/physics/kerrVaidyaGeometry.ts";
 import { evaluateMassFunction, type MassFunctionParameters } from "../src/physics/massFunction.ts";
 import { solveApparentHorizon } from "../src/physics/apparentHorizon.ts";
+import {
+  AnalogueMatchingInvariant,
+  evaluateFluidVortexAnalogue,
+  evaluateFluidVortexAnalogueRates,
+  evaluateNondispersiveCeilingFrequency,
+  evaluateSurfaceWaveDispersion,
+  type AnalogueMappingConfiguration
+} from "../src/physics/fluidVortexAnalogue.ts";
 
 const IdentityTolerance = 1e-10;
 const TetradTolerance = 1e-9;
@@ -29,6 +38,7 @@ const NullConstraintTolerance = 1e-9;
 const EnergyConservationTolerance = 1e-7;
 const NullDriftTolerance = 1e-6;
 const CriticalImpactParameterRelativeTolerance = 0.005;
+const NondispersiveBandTolerance = 0.05;
 const HorizonCorrectionExpected = 3.57e-5;
 const HorizonCorrectionRelativeTolerance = 0.15;
 const EquatorialPolarAngle = Math.PI / 2;
@@ -449,6 +459,196 @@ check(
 );
 const poleCorrections = [horizonSolution.samples[0].correction, horizonSolution.samples.at(-1)?.correction ?? NaN];
 check("apparent horizon correction vanishes at the poles", poleCorrections.every((value) => value === 0), `${poleCorrections}`);
+
+// --- Kerr horizon mechanics -------------------------------------------------------
+{
+  const schwarzschild = evaluateHorizonThermodynamics(1, 0);
+  check(
+    "Schwarzschild surface gravity 1/4M and temperature 1/8piM",
+    Math.abs(schwarzschild.surfaceGravity - 0.25) < 1e-12 &&
+      Math.abs(schwarzschild.hawkingTemperature - 1 / (8 * Math.PI)) < 1e-12,
+    `kappa ${schwarzschild.surfaceGravity}, T ${schwarzschild.hawkingTemperature}`
+  );
+  check(
+    "Schwarzschild irreducible mass equals M and entropy A/4",
+    Math.abs(schwarzschild.irreducibleMass - 1) < 1e-12 &&
+      Math.abs(schwarzschild.bekensteinHawkingEntropy - schwarzschild.area / 4) < 1e-12,
+    `M_irr ${schwarzschild.irreducibleMass}, S ${schwarzschild.bekensteinHawkingEntropy}`
+  );
+  const spinning = evaluateHorizonThermodynamics(1, 0.7);
+  check(
+    "Kerr horizon angular velocity equals a/2Mr_+",
+    Math.abs(spinning.angularVelocity - 0.7 / (2 * spinning.outerRadius)) < 1e-12,
+    `Omega ${spinning.angularVelocity}`
+  );
+  const massStep = 1e-6;
+  const numericalGrowth =
+    (evaluateHorizonThermodynamics(1 + massStep, 0.7).outerRadius -
+      evaluateHorizonThermodynamics(1 - massStep, 0.7).outerRadius) /
+    (2 * massStep);
+  check(
+    "horizon growth per unit mass matches dr_+/dM",
+    Math.abs(spinning.radiusGrowthPerUnitMass - numericalGrowth) < 1e-6,
+    `analytic ${spinning.radiusGrowthPerUnitMass}, numeric ${numericalGrowth}`
+  );
+}
+
+// --- Fluid vortex analogue --------------------------------------------------------
+const analogueConfiguration: AnalogueMappingConfiguration = {
+  referenceSonicHorizonRadiusMetres: 0.03,
+  layerDepthMetres: 0.0625,
+  tankRadiusMetres: 0.6,
+  matchedInvariant: AnalogueMatchingInvariant.HorizonAngularVelocity
+};
+const analogueMassParameters: MassFunctionParameters = { initialMass: 1, accretionRate: 0.002, smoothingTime: 24 };
+
+{
+  const staticState = evaluateFluidVortexAnalogue(
+    evaluateMassFunction(0, { ...analogueMassParameters, accretionRate: 0 }),
+    0,
+    1,
+    analogueConfiguration
+  );
+  check(
+    "non-rotating hole maps to a pure sink (no circulation)",
+    staticState.flow.circulationStrength === 0 && staticState.geometry.ergosurfaceRadiusMetres === staticState.geometry.sonicHorizonRadiusMetres,
+    `C ${staticState.flow.circulationStrength}, r_ergo ${staticState.geometry.ergosurfaceRadiusMetres}`
+  );
+  check(
+    "sonic horizon lands where the apparatus was anchored",
+    Math.abs(staticState.geometry.sonicHorizonRadiusMetres - analogueConfiguration.referenceSonicHorizonRadiusMetres) < 1e-12,
+    `r_h ${staticState.geometry.sonicHorizonRadiusMetres}`
+  );
+  check(
+    "analogue surface gravity is c/r_h and wave speed is sqrt(g h)",
+    Math.abs(
+      staticState.thermodynamics.surfaceGravityPerSecond -
+        staticState.unitScaling.waveSpeedMetresPerSecond / staticState.geometry.sonicHorizonRadiusMetres
+    ) < 1e-12 &&
+      Math.abs(staticState.unitScaling.waveSpeedMetresPerSecond - Math.sqrt(9.80665 * 0.0625)) < 1e-12,
+    `kappa ${staticState.thermodynamics.surfaceGravityPerSecond}, c ${staticState.unitScaling.waveSpeedMetresPerSecond}`
+  );
+  check(
+    "Schwarzschild analogue runs exactly twice as hot per horizon radius",
+    Math.abs(staticState.fidelity.surfaceGravityRatio - 2) < 1e-9,
+    `ratio ${staticState.fidelity.surfaceGravityRatio}`
+  );
+}
+
+{
+  const spinningMass = evaluateMassFunction(0, analogueMassParameters);
+  const angularVelocityMatched = evaluateFluidVortexAnalogue(spinningMass, 0.82, 1, analogueConfiguration);
+  const ergosphereMatched = evaluateFluidVortexAnalogue(spinningMass, 0.82, 1, {
+    ...analogueConfiguration,
+    matchedInvariant: AnalogueMatchingInvariant.ErgosphereRadiusRatio
+  });
+  check(
+    "the selected invariant is matched exactly and the other is not",
+    Math.abs(angularVelocityMatched.fidelity.horizonAngularVelocityResidual) < 1e-12 &&
+      Math.abs(angularVelocityMatched.fidelity.ergosphereRadiusRatioResidual) > 1e-3 &&
+      Math.abs(ergosphereMatched.fidelity.ergosphereRadiusRatioResidual) < 1e-12 &&
+      Math.abs(ergosphereMatched.fidelity.horizonAngularVelocityResidual) > 1e-3,
+    `angular-velocity residuals ${angularVelocityMatched.fidelity.horizonAngularVelocityResidual}, ` +
+      `${angularVelocityMatched.fidelity.ergosphereRadiusRatioResidual}; ` +
+      `ergosphere residuals ${ergosphereMatched.fidelity.ergosphereRadiusRatioResidual}, ` +
+      `${ergosphereMatched.fidelity.horizonAngularVelocityResidual}`
+  );
+  const kerrHorizon = evaluateHorizonThermodynamics(spinningMass.mass, 0.82);
+  const dimensionlessFluidAngularVelocity =
+    (angularVelocityMatched.geometry.horizonAngularVelocityRadiansPerSecond *
+      angularVelocityMatched.geometry.sonicHorizonRadiusMetres) /
+    angularVelocityMatched.unitScaling.waveSpeedMetresPerSecond;
+  check(
+    "matched vortex reproduces the dimensionless Kerr frame-dragging rate",
+    Math.abs(dimensionlessFluidAngularVelocity - kerrHorizon.angularVelocity * kerrHorizon.outerRadius) < 1e-12,
+    `fluid ${dimensionlessFluidAngularVelocity}, Kerr ${kerrHorizon.angularVelocity * kerrHorizon.outerRadius}`
+  );
+  check(
+    "ergosurface encloses the sonic horizon whenever the hole spins",
+    ergosphereMatched.geometry.ergosurfaceRadiusMetres > ergosphereMatched.geometry.sonicHorizonRadiusMetres &&
+      ergosphereMatched.validity.ergosurfaceFitsInsideTank,
+    `r_ergo ${ergosphereMatched.geometry.ergosurfaceRadiusMetres}, r_h ${ergosphereMatched.geometry.sonicHorizonRadiusMetres}`
+  );
+  check(
+    "superradiance thresholds are m x the horizon rotation frequency",
+    ergosphereMatched.thermodynamics.superradianceThresholdFrequenciesHertz.every(
+      (frequency, index) =>
+        Math.abs(
+          frequency -
+            ((index + 1) * ergosphereMatched.geometry.horizonAngularVelocityRadiansPerSecond) / (2 * Math.PI)
+        ) < 1e-12
+    ),
+    `${ergosphereMatched.thermodynamics.superradianceThresholdFrequenciesHertz}`
+  );
+}
+
+{
+  const shallowWaterSpeed = Math.sqrt(9.80665 * 0.0625);
+  const longWave = evaluateSurfaceWaveDispersion(0.05, 0.0625);
+  check(
+    "surface wave dispersion reduces to sqrt(g h) at long wavelength",
+    Math.abs(longWave.phaseSpeedMetresPerSecond - shallowWaterSpeed) / shallowWaterSpeed < 1e-4 &&
+      Math.abs(longWave.shallowWaterSpeedRatio - 1) < 1e-4,
+    `c_phase ${longWave.phaseSpeedMetresPerSecond} vs ${shallowWaterSpeed}`
+  );
+  // The ceiling has to be a frequency that is genuinely still in band: at its
+  // shallow-water wavenumber the true phase speed must sit inside the 5% tolerance
+  // the band is defined by. Deepening the layer must lower it.
+  const shallowCeiling = evaluateNondispersiveCeilingFrequency(0.01);
+  const deepCeiling = evaluateNondispersiveCeilingFrequency(0.0625);
+  const speedRatioAtCeiling = (depth: number, ceilingFrequency: number) =>
+    evaluateSurfaceWaveDispersion(
+      (2 * Math.PI * ceilingFrequency) / Math.sqrt(9.80665 * depth),
+      depth
+    ).shallowWaterSpeedRatio;
+  check(
+    "the non-dispersive ceiling is still in band and falls with depth",
+    shallowCeiling > deepCeiling &&
+      Math.abs(speedRatioAtCeiling(0.01, shallowCeiling) - 1) < NondispersiveBandTolerance &&
+      Math.abs(speedRatioAtCeiling(0.0625, deepCeiling) - 1) < NondispersiveBandTolerance,
+    `${shallowCeiling} Hz (ratio ${speedRatioAtCeiling(0.01, shallowCeiling)}), ` +
+      `${deepCeiling} Hz (ratio ${speedRatioAtCeiling(0.0625, deepCeiling)})`
+  );
+  check(
+    "the 3.7 Hz probe of Torres et al. 2016 sits above the shallow-water band in 6.25 cm",
+    deepCeiling < 3.7,
+    `ceiling ${deepCeiling} Hz`
+  );
+}
+
+{
+  const rates = evaluateFluidVortexAnalogueRates(12, 0.82, analogueMassParameters, analogueConfiguration);
+  const secondsPerAdvancedTime = evaluateFluidVortexAnalogue(
+    evaluateMassFunction(12, analogueMassParameters),
+    0.82,
+    1,
+    analogueConfiguration
+  ).unitScaling.secondsPerGeometrizedTime;
+  const advancedTimeStep = 1e-4;
+  const drainAt = (advancedTime: number) =>
+    evaluateFluidVortexAnalogue(
+      evaluateMassFunction(advancedTime, analogueMassParameters),
+      0.82,
+      1,
+      analogueConfiguration
+    ).flow.drainStrength;
+  const numericalDrainRate =
+    (drainAt(12 + advancedTimeStep) - drainAt(12 - advancedTimeStep)) / (2 * advancedTimeStep * secondsPerAdvancedTime);
+  check(
+    "accretion ramps the drain: dD/dt matches a direct difference and is positive",
+    rates.drainStrengthRate > 0 &&
+      Math.abs(rates.drainStrengthRate - numericalDrainRate) / numericalDrainRate < 1e-4,
+    `analytic ${rates.drainStrengthRate}, numeric ${numericalDrainRate}`
+  );
+  check(
+    "accretion grows the vortex while spinning it down (C/D falls, C and D both rise)",
+    rates.circulationStrengthToDrainRatioRate < 0 &&
+      rates.circulationStrengthRate > 0 &&
+      rates.sonicHorizonRadiusRateMetresPerSecond > 0,
+    `d(C/D)/dt ${rates.circulationStrengthToDrainRatioRate}, dC/dt ${rates.circulationStrengthRate}, ` +
+      `dr_h/dt ${rates.sonicHorizonRadiusRateMetresPerSecond}`
+  );
+}
 
 // --------------------------------------------------------------------------------
 if (failures.length > 0) {

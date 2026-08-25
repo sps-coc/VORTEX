@@ -46,6 +46,45 @@ export function evaluateHorizonArea(mass: number, spin: number): number {
   return 4 * Math.PI * (outerRadius * outerRadius + spin * spin);
 }
 
+export interface HorizonThermodynamics {
+  outerRadius: number;
+  innerRadius: number;
+  area: number;
+  surfaceGravity: number;
+  hawkingTemperature: number;
+  bekensteinHawkingEntropy: number;
+  irreducibleMass: number;
+  angularVelocity: number;
+  angularMomentum: number;
+  // dr_+/dM, the factor turning the Vaidya accretion rate M'(v) into horizon growth.
+  radiusGrowthPerUnitMass: number;
+}
+
+// Kerr horizon mechanics in geometrized units (G = c = hbar = k_B = 1). The Vaidya
+// mass function makes every one of these a function of advanced time; they are the
+// quantities the fluid analogue has to reproduce.
+export function evaluateHorizonThermodynamics(mass: number, spin: number): HorizonThermodynamics {
+  const boundedSpin = Math.min(Math.abs(spin), mass * MaximalSpinFraction);
+  const discriminantRoot = Math.sqrt(Math.max(mass * mass - boundedSpin * boundedSpin, 0));
+  const outerRadius = mass + discriminantRoot;
+  const innerRadius = mass - discriminantRoot;
+  const horizonNorm = outerRadius * outerRadius + boundedSpin * boundedSpin;
+  const surfaceGravity = (outerRadius - innerRadius) / (2 * horizonNorm);
+
+  return {
+    outerRadius,
+    innerRadius,
+    area: 4 * Math.PI * horizonNorm,
+    surfaceGravity,
+    hawkingTemperature: surfaceGravity / (2 * Math.PI),
+    bekensteinHawkingEntropy: Math.PI * horizonNorm,
+    irreducibleMass: Math.sqrt(horizonNorm) / 2,
+    angularVelocity: boundedSpin / horizonNorm,
+    angularMomentum: boundedSpin * mass,
+    radiusGrowthPerUnitMass: 1 + mass / Math.max(discriminantRoot, ExtremalHorizonFloor)
+  };
+}
+
 export function evaluatePhotonOrbitRadii(mass: number, spin: number): { prograde: number; retrograde: number } {
   const spinRatio = Math.min(Math.abs(spin) / mass, MaximalSpinFraction);
   const orbitRadius = (retrogradeSign: number) =>
@@ -499,6 +538,7 @@ export function advanceGeodesicAdaptively(
 }
 
 const MaximalSpinFraction = 0.999999;
+const ExtremalHorizonFloor = 1e-9;
 const IntegrationArcFraction = 0.03;
 const HorizonApproachFraction = 0.9;
 const NearHorizonArcFloor = 0.02;
