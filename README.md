@@ -45,6 +45,44 @@ rotation ↔ Kerr spin, expansion ↔ Vaidya mass growth.
   geodesic. The celestial sphere — anti-aliased point stars over a tilted galactic
   band with dust lanes — is sampled only by rays that escape to the celestial radius.
 
+## The fluid analogue
+
+The visualization exists to design an experiment. Every frame, the black hole's live
+state is mapped onto a **draining bathtub vortex** — a shallow layer of water with a
+point drain and circulation, whose surface waves obey a Klein-Gordon equation on an
+effective metric with a horizon, an ergoregion, frame dragging and superradiance
+(Unruh 1981; Visser gr-qc/9712010; Cardoso, Lemos & Yoshida gr-qc/0410107). The tank
+has exactly one dimensionless shape freedom, so exactly one Kerr invariant is matched
+(horizon angular velocity by default, or the ergosphere radius ratio) and the rest are
+reported as residuals — including one, the surface gravity, that no apparatus can
+match. Vaidya accretion becomes a pump schedule: the drain and the circulation both
+have to be ramped, the drain faster, because a growing M at fixed a is a spin-down.
+At the shipped defaults that is a 40 cm tray, 1 cm of water, and 63 L/min through the
+drain. `docs/analogue-mapping.md` is the full mapping, the validity envelope, and the
+bill; `src/physics/fluidVortexAnalogue.ts` is the implementation.
+
+## Data collection
+
+Nothing is retained unless it is recorded, so the recorded record is exhaustive: one
+JSONL line per sample carrying the complete per-frame readout — horizon mechanics
+(area, irreducible mass, entropy, surface gravity, Hawking temperature, angular
+velocity), characteristic radii, the observer's constants of the motion (specific
+energy, angular momentum, Carter constant — all three visibly drifting under
+accretion, which is the point of the spacetime), the full fluid-analogue state and its
+driving rates, and the render diagnostics. Roughly a hundred plottable columns.
+
+Record and download from the data panel, or headlessly:
+
+```sh
+npm run capture -- data/telemetry/spin-090.jsonl 30 '{"spin":0.90}'
+npm run data:table -- data/telemetry/spin-090.jsonl figures/spin-090.csv
+```
+
+The laboratory half is `data/experiment-log.jsonl`, filled in by hand and joined to a
+recording on its run identifier; `npm run log:check` validates it and reports which
+measurements have a predicted counterpart to plot against. `data/README.md` documents
+both formats.
+
 ## Running
 
 ```sh
@@ -56,18 +94,23 @@ Controls while running (physical): drag = look around, wheel = forward/backward
 thrust, shift/right-drag = lateral thrust, space = pause. Controls while paused
 (free placement): drag = orbit, shift/right-drag = pan, wheel = zoom, q/e = roll.
 The panel (top left) exposes spin, accretion rate, exposure, time scale,
-integration quality, and diagnostic views; the minimap (top right) shows the apparent
-horizon, ergosphere, photon-orbit band, ISCO, and the observer position, with live
-readouts. Everything in the readouts is also published on `window.kerrVaidyaState`,
-and `window.kerrVaidyaDiagnostics.captureFieldStatistics(field, thresholds)` reads
-back full-frame diagnostic statistics.
+integration quality, and diagnostic views; the data panel exposes the tank parameters,
+the fluid targets, and the recorder; the minimap shows the apparent horizon,
+ergosphere, photon-orbit band, ISCO, and the observer position. Everything in the
+readouts is also published on `window.kerrVaidyaState`,
+`window.kerrVaidyaRecorder` drives data collection headlessly, and
+`window.kerrVaidyaDiagnostics.captureFieldStatistics(field, thresholds)` reads back
+full-frame diagnostic statistics.
 
 ## Validation
 
 ```sh
 npm run check      # CPU physics: metric inverse, ZAMO tetrads, null rays,
                    # p_v conservation in Kerr, traced shadow edge vs sqrt(27)M,
-                   # horizon ODE vs 2020 Fig. 1, Kerr limits (photon orbits, ISCO)
+                   # horizon ODE vs 2020 Fig. 1, Kerr limits (photon orbits, ISCO),
+                   # Kerr horizon mechanics, and the fluid analogue (invariant
+                   # matching, surface-wave dispersion, accretion ramp signs)
+npm run log:check  # data/experiment-log.jsonl against its schema
 ```
 
 With the dev server running and Chrome listening on the DevTools port
@@ -81,7 +124,7 @@ npm run validate   # live render: WebGL health + screenshot, Schwarzschild shado
 
 ## Contributing (UI)
 
-Two files are deliberately unimplemented and owned by UI contributors — each is
+Three files are deliberately unimplemented and owned by UI contributors — each is
 self-contained: read only the file itself plus the argument types in
 `src/contributorApi.ts`, no physics involved.
 
@@ -94,6 +137,10 @@ self-contained: read only the file itself plus the argument types in
   anywhere; parameter sliders, a diagnostic-view selector, a pause/resume button,
   real-time readout labels (values arrive every frame via `updateReadout`), and the
   ready-made self-updating minimap element to mount wherever fits.
+- `src/ui/dataPanel.ts` — the experiment panel: the tank parameters, the fluid targets
+  and ramp schedule the simulation is asking someone to build, the validity warnings,
+  the fidelity residuals, and the recorder (record / sample rate / mark / download /
+  lab-log template). Shares nothing with the control panel but the readout.
 
 `references/informative/` holds a Shadertoy Kerr renderer consulted for shader
 technique ideas only; nothing normative comes from it.

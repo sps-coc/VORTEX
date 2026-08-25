@@ -8,7 +8,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "check": "node scripts/physicsChecks.ts",
-    "validate": "node scripts/validate-webgl.mjs && node scripts/validateShadowGeometry.mjs"
+    "validate": "node scripts/validate-webgl.mjs && node scripts/validateShadowGeometry.mjs",
+    "log:check": "node scripts/validateExperimentLog.ts",
+    "data:table": "node scripts/exportTelemetryTable.ts",
+    "capture": "node scripts/captureTelemetry.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-basic-ssl": "^2.1.0",
