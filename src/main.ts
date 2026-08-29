@@ -82,7 +82,9 @@ const simulation: SimulationState = {
   timeScale: 1.25,
   diagnosticField: DiagnosticField.Radiance,
   maximumStepCount: 380,
-  paused: false,
+  // Boot paused: the user composes the initial condition with the orbit camera
+  // (wheel = zoom) and presses Space to begin the journey (wheel = thrust).
+  paused: true,
   // Bench-scale tank chosen so every tunable validity flag passes at the default
   // spin: ~63 L/min of drain, a shallow-water ratio of 0.19, and an m = 3
   // superradiance threshold an order of magnitude below the dispersive ceiling.

@@ -31,9 +31,12 @@ await cdp.send("Page.enable");
 await cdp.send("Page.navigate", { url: appUrl });
 await new Promise((resolve) => setTimeout(resolve, SettleMilliseconds));
 
-if (simulationPartial) {
-  await evaluateInPage(cdp, `window.kerrVaidyaControls.setSimulation(${JSON.stringify(simulationPartial)}); true`);
-}
+// The app boots paused; capture records the free-fall journey unless the caller's
+// partial explicitly keeps it paused.
+await evaluateInPage(
+  cdp,
+  `window.kerrVaidyaControls.setSimulation(${JSON.stringify({ paused: false, ...(simulationPartial ?? {}) })}); true`
+);
 await evaluateInPage(
   cdp,
   `window.kerrVaidyaRecorder.setSampleIntervalSeconds(${DefaultSampleIntervalSeconds});

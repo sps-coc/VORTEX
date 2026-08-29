@@ -65,6 +65,15 @@ export function attachFlightControls(
   );
 
   window.addEventListener("keydown", (event) => {
-    if (event.code === "Space") simulation.paused = !simulation.paused;
+    if (event.code !== "Space") return;
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))
+    ) {
+      return;
+    }
+    event.preventDefault();
+    simulation.paused = !simulation.paused;
   });
 }

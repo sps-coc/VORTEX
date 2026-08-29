@@ -1,38 +1,88 @@
+import { Vector2, Vector3 } from "three";
 import type { PausedCameraControlContext } from "../contributorApi.ts";
 
-// ---------------------------------------------------------------------------------
-// YOUR FILE. Implement the paused-mode ("free placement") camera controls here.
-// Everything you need is in `context` — see PausedCameraControlContext in
-// src/contributorApi.ts. You do not need to read any other file.
-//
-// While the simulation is paused the camera is unphysical by design: the user is
-// setting an initial condition, so movement should feel like a familiar 3D-viewer
-// orbit camera. While running, the flight controls own all gestures — every one of
-// your handlers must early-return when !context.isPaused().
-//
-// Required behavior (attach listeners to context.domElement):
-// - Orbit: pointer drag rotates the camera around the black hole. Mutate
-//   placement.orbitYaw / placement.orbitPitch (clamp |pitch| <= ~1.35 rad so the
-//   camera never flips over the poles). A sensitivity around 0.006 rad/px feels good.
-// - Pan: shift-drag or right-button drag translates placement.target. Use three.js:
-//   context.camera.getWorldDirection(...) and context.camera.up give you the view
-//   basis; pan along the screen-aligned right/up vectors, scaled by
-//   placement.distance (about 0.0007 * distance per px).
-// - Zoom: wheel scales placement.distance exponentially
-//   (distance *= Math.exp(deltaY * 0.0012) works well). Clamp the result inside
-//   context.distanceBounds() — re-read the bounds on every event, they follow the
-//   growing horizon.
-// - Optional: q/e keys nudge placement.roll by ~0.08 rad.
-//
-// Implementation notes:
-// - Use pointer events with setPointerCapture/releasePointerCapture on
-//   context.domElement so drags keep tracking outside the canvas.
-// - Call event.preventDefault() in the wheel handler ({ passive: false }) and
-//   suppress the context menu for right-drag pan.
-// - Track the previous pointer position yourself (a three.js Vector2 is handy).
-// - Feel free to add any helper functions in this file.
-// ---------------------------------------------------------------------------------
+// Paused-mode ("free placement") camera: a familiar 3D-viewer orbit camera for
+// setting the initial condition. Drag orbits, shift/right-drag pans the target,
+// wheel zooms the orbit distance inside the live physical bounds, q/e roll. Every
+// handler early-returns while the simulation is running — flight controls own all
+// gestures in that mode.
+
+const OrbitRadiansPerPixel = 0.006;
+const PanTargetDistanceFractionPerPixel = 0.0007;
+const ZoomExponentPerWheelUnit = 0.0012;
+const RollRadiansPerKeyPress = 0.08;
+const MaximumOrbitPitch = 1.35;
+
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}
 
 export function attachPausedCameraControls(context: PausedCameraControlContext): void {
-  void context;
+  const lastPointer = new Vector2();
+  let dragging = false;
+  let dragButton = 0;
+
+  context.domElement.addEventListener("pointerdown", (event) => {
+    if (!context.isPaused()) return;
+    dragging = true;
+    dragButton = event.button;
+    lastPointer.set(event.clientX, event.clientY);
+    context.domElement.setPointerCapture(event.pointerId);
+  });
+
+  context.domElement.addEventListener("pointermove", (event) => {
+    if (!dragging || !context.isPaused()) return;
+    const deltaX = event.clientX - lastPointer.x;
+    const deltaY = event.clientY - lastPointer.y;
+    lastPointer.set(event.clientX, event.clientY);
+
+    if (event.shiftKey || dragButton === 2) {
+      // Pan along the screen-aligned right/up directions so content follows the
+      // cursor, scaled with distance so the gesture covers the same screen fraction
+      // at every zoom level.
+      const forward = new Vector3();
+      context.camera.getWorldDirection(forward);
+      const right = new Vector3().crossVectors(forward, context.camera.up).normalize();
+      const up = new Vector3().crossVectors(right, forward).normalize();
+      const scale = PanTargetDistanceFractionPerPixel * context.placement.distance;
+      context.placement.target.addScaledVector(right, -deltaX * scale).addScaledVector(up, deltaY * scale);
+    } else {
+      // three.js OrbitControls sign convention: the scene follows the drag.
+      context.placement.orbitYaw -= deltaX * OrbitRadiansPerPixel;
+      context.placement.orbitPitch = Math.max(
+        -MaximumOrbitPitch,
+        Math.min(MaximumOrbitPitch, context.placement.orbitPitch + deltaY * OrbitRadiansPerPixel)
+      );
+    }
+  });
+
+  context.domElement.addEventListener("pointerup", (event) => {
+    dragging = false;
+    context.domElement.releasePointerCapture(event.pointerId);
+  });
+
+  context.domElement.addEventListener("contextmenu", (event) => event.preventDefault());
+
+  context.domElement.addEventListener(
+    "wheel",
+    (event) => {
+      if (!context.isPaused()) return;
+      event.preventDefault();
+      const bounds = context.distanceBounds();
+      context.placement.distance = Math.max(
+        bounds.minimum,
+        Math.min(bounds.maximum, context.placement.distance * Math.exp(event.deltaY * ZoomExponentPerWheelUnit))
+      );
+    },
+    { passive: false }
+  );
+
+  window.addEventListener("keydown", (event) => {
+    if (!context.isPaused() || isTextEntryTarget(event.target)) return;
+    if (event.key === "q" || event.key === "Q") context.placement.roll -= RollRadiansPerKeyPress;
+    if (event.key === "e" || event.key === "E") context.placement.roll += RollRadiansPerKeyPress;
+  });
 }
