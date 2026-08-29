@@ -102,7 +102,7 @@ src/shaders/                   GLSL for the GPU raytracer
 src/observer/physicalObserver.ts   the camera as a physical worldline (tetrads,
                                    free fall, thrust, aberration)
 src/controls/flightControls.ts     running-mode input (done)
-src/controls/pausedCameraControls.ts   paused-mode camera — UI-CONTRIBUTOR STUB
+src/controls/pausedCameraControls.ts   paused-mode orbit camera (done)
 
 src/data/
   simulationFrameState.ts      physics → the one big per-frame readout
@@ -116,7 +116,7 @@ src/ui/
   dataPanel.ts                 tank readouts + recorder controls — UI-CONTRIBUTOR STUB
 
 scripts/
-  physicsChecks.ts             npm run check — 38 CPU physics tests
+  physicsChecks.ts             npm run check — 40 CPU physics tests
   validate-webgl.mjs,
   validateShadowGeometry.mjs   npm run validate — live-render tests via Chrome
   captureTelemetry.mjs         npm run capture — headless recording
@@ -161,13 +161,22 @@ Everything the UI would show is also scriptable from the browser console:
 
 ## 6. What is finished and what is not
 
-**Finished and verified:** all physics, the renderer, the observer, the analogue
-mapping, the entire data pipeline, and the validation suites (38 physics checks pass;
-an end-to-end headless capture has been run and sanity-checked).
+**Finished and verified:** all physics, the renderer, the observer, both control
+modes, the analogue mapping, the entire data pipeline, and the validation suites
+(40 physics checks pass; an end-to-end headless capture has been run and
+sanity-checked).
 
-**Deliberately not done — the UI.** Three files are contributor-owned stubs. Each
-contains a complete written spec in its header comment, and each needs *only* itself
-plus the types in `src/contributorApi.ts` — no physics knowledge:
+A note on the two control modes, since the distinction confuses everyone at first:
+the app **boots paused**. Paused means "compose the initial condition" — drag orbits
+the hole, shift/right-drag pans, the wheel is a true zoom (clamped just outside the
+growing horizon), q/e roll, and time is frozen. Pressing **Space** turns the camera
+into a physical infalling observer: from then on the wheel is *thrust along the look
+direction* (not zoom), drag turns your head, and the clock runs at your proper time —
+so your speed genuinely changes how fast the hole evolves.
+
+**Deliberately not done — the UI panels.** Two files are contributor-owned stubs.
+Each contains a complete written spec in its header comment, and each needs *only*
+itself plus the types in `src/contributorApi.ts` — no physics knowledge:
 
 - `src/ui/controlPanel.ts` — sliders for the black-hole parameters, pause button,
   live readout labels, and a place to mount the (already working) minimap.
@@ -175,8 +184,6 @@ plus the types in `src/contributorApi.ts` — no physics knowledge:
   build-sheet numbers, validity warnings, fidelity residuals, and the record /
   mark / download buttons. Until this exists, recording is driven via
   `window.kerrVaidyaRecorder` or `npm run capture` (both fully working).
-- `src/controls/pausedCameraControls.ts` — orbit/pan/zoom gestures for the paused
-  camera.
 
 The app runs fine with the stubs in place — you just see the render with no panels.
 
@@ -359,7 +366,7 @@ with margin. Details and the reasoning for each bound: `docs/analogue-mapping.md
 
 ## 12. If you change the physics
 
-`npm run check` is the contract: 38 assertions from "the metric inverse really
+`npm run check` is the contract: 40 assertions from "the metric inverse really
 inverts" to "the analogue reproduces Kerr's frame-dragging rate when matched" to
 "the drain ramp has the right sign." Run it after any change under `src/physics/`;
 add an assertion when you add an equation. `npm run validate` closes the loop at the
