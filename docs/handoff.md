@@ -172,7 +172,10 @@ the hole, shift/right-drag pans, the wheel is a true zoom (clamped just outside 
 growing horizon), q/e roll, and time is frozen. Pressing **Space** turns the camera
 into a physical infalling observer: from then on the wheel is *thrust along the look
 direction* (not zoom), drag turns your head, and the clock runs at your proper time —
-so your speed genuinely changes how fast the hole evolves.
+so your speed genuinely changes how fast the hole evolves. Flying also produces two
+famously counterintuitive sights — thrusting *toward* the hole makes it visually
+shrink (relativistic aberration), and braking makes it balloon — see "What flying
+actually looks like" in Part II §8 before filing either as a bug.
 
 **Deliberately not done — the UI panels.** Two files are contributor-owned stubs.
 Each contains a complete written spec in its header comment, and each needs *only*
@@ -279,6 +282,31 @@ estimate you can view as a diagnostic.
 "tetrad") generates all aberration and Doppler/gravitational color shift. The journey
 ends a safety margin *above the inner horizon*, where classical GR stops being
 trustworthy — that is a physics statement, not a rendering limitation.
+
+**What flying actually looks like — counterintuitive but verified, not bugs.** Two
+exact relativistic effects make piloting feel "wrong" until you know them; everyone
+who flies this thing reports both as bugs at first.
+
+1. *Aberration: thrusting toward the hole makes it shrink on screen.* At relativistic
+   speed the whole sky compresses toward your direction of motion, so the thing you
+   are flying at appears to recede — and past a few units of rapidity it shrinks to a
+   dot and vanishes into the blueshifted glare of the matter ahead, even while you are
+   plunging faster than ever. The shadow's angular radius obeys
+   `tan(θ_seen/2) = e^(−w) · tan(θ_static/2)` (w = your rapidity relative to a static
+   observer at the same r). This was measured in the live renderer: diving at
+   β = 0.986 at r = 11.3 M, a static observer would see a 24.7° shadow, the formula
+   predicts 2.14°, and the rendered image measures 2.14°. Braking ("zooming out")
+   removes the compression and the shadow balloons back over the screen — it feels
+   like being suddenly sucked in, but you were falling the whole time. **The minimap
+   dot is your actual radius and never lies; the main view is what a pilot's eyes
+   would see. The gap between them is the physics.**
+2. *The clock runs at your proper time.* The simulation's advanced time v advances at
+   dv/dτ of *your* worldline — relativistic Doppler, ~γ(1±β) for radial motion. Flee
+   at β = 0.96 and the hole evolves ~7.8× faster; dive at β = 0.96 and its growth
+   nearly freezes (dv/dτ ≈ 0.14). So "zooming" genuinely changes how fast the
+   universe runs. Free fall from rest at the default 19.4 M placement takes ~86 M of
+   proper time ≈ 69 wall-seconds at the default time scale — being "sucked in" is
+   slow out there.
 
 **The apparent horizon.** For a growing hole the true trapping boundary sits slightly
 *inside* the Kerr radius r+ and is θ-dependent. The code solves the linearized

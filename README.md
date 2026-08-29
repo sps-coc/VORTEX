@@ -90,9 +90,15 @@ npm install
 npm run dev        # http://127.0.0.1:5173
 ```
 
-Controls while running (physical): drag = look around, wheel = forward/backward
-thrust, shift/right-drag = lateral thrust, space = pause. Controls while paused
-(free placement): drag = orbit, shift/right-drag = pan, wheel = zoom, q/e = roll.
+The app boots **paused** in the free-placement camera: drag = orbit,
+shift/right-drag = pan, wheel = zoom (clamped just outside the growing horizon),
+q/e = roll. Space starts the journey; while running the camera is the physical
+observer: drag = look around, wheel = forward/backward **thrust** (not zoom),
+shift/right-drag = lateral thrust, space = pause. Expect the two counterintuitive
+relativistic effects of flying: thrusting toward the hole visually *shrinks* it
+(aberration — verified against the exact formula), and your speed changes how fast
+the hole evolves (the clock runs at the observer's proper time). The minimap always
+shows your true radius.
 The panel (top left) exposes spin, accretion rate, exposure, time scale,
 integration quality, and diagnostic views; the data panel exposes the tank parameters,
 the fluid targets, and the recorder; the minimap shows the apparent horizon,
@@ -124,15 +130,12 @@ npm run validate   # live render: WebGL health + screenshot, Schwarzschild shado
 
 ## Contributing (UI)
 
-Three files are deliberately unimplemented and owned by UI contributors — each is
+Two files are deliberately unimplemented and owned by UI contributors — each is
 self-contained: read only the file itself plus the argument types in
-`src/contributorApi.ts`, no physics involved.
+`src/contributorApi.ts`, no physics involved. (Both control modes — the running-mode
+flight controls in `src/controls/flightControls.ts` and the paused-mode orbit camera
+in `src/controls/pausedCameraControls.ts` — are already implemented.)
 
-- `src/controls/pausedCameraControls.ts` — the paused-mode ("free placement")
-  camera gestures: orbit / pan / zoom against a mutable placement object, gated on
-  `isPaused()`, with live physical distance bounds. The running-mode flight
-  controls (thrust + head rotation) are already implemented in
-  `src/controls/flightControls.ts` and must not be duplicated.
 - `src/ui/controlPanel.ts` — the control panel: your own HTML/CSS/TS, positioned
   anywhere; parameter sliders, a diagnostic-view selector, a pause/resume button,
   real-time readout labels (values arrive every frame via `updateReadout`), and the
