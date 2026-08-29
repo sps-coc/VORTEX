@@ -7,10 +7,6 @@ in two sittings — Part I is *what the project is and how the code works*, Part
 *the physics, the equations, the assumptions, and the units*. The other two files are
 deep dives you can go to when you need them.
 
-One warning up front: `docs/architecture.md` describes an **older, abandoned phase**
-of the project (a 2D packet simulator that no longer exists). Ignore it or delete it;
-this file supersedes it.
-
 ---
 
 # Part I — What this is and how it works
