@@ -198,6 +198,113 @@ unmeasurable — but the same surface gravity expressed as a *frequency* is 0.93
 which is a ripple you can photograph. The classical kinematics of the horizon survive
 the analogy; the quantum thermodynamics does not.
 
+## 8. Scaling the rig: what is free, and how everything else follows
+
+The shipped defaults (§7) are a bench-scale example, not a requirement. This section
+states exactly which quantities are **independent variables you choose freely**, why
+size in particular is free, and the computation chain that determines everything else.
+The app performs this chain live: type the three numbers into the apparatus
+parameters and every derived value and validity flag below updates each frame.
+
+### Why size is a free choice
+
+The effective metric (§1) contains only `c`, `C`, and `D`. Rescale every length by λ
+(`r → λr`, `D → λD`, `C → λC`, `c` unchanged) and every *dimensionless* property of
+the geometry — `r_e/r_h`, `C/D`, `Ω_h r_h/c`, the matched Kerr invariant itself — is
+untouched; lengths scale by λ and times by λ. The derivation of the analogy
+(Unruh 1981; Visser gr-qc/9712010) introduces **no preferred length scale**, so the
+ideal analogue works at any size. Real water adds three absolute scales, and every
+one of them gets *easier or no worse* as the rig grows:
+
+- the **capillary length** (2.7 mm) is fixed, so a bigger geometry recedes further
+  from capillary contamination;
+- the **Reynolds number** rises with scale, but the flow is already turbulent at
+  bench scale — nothing qualitative changes;
+- the **dispersion ceiling** (§6) depends on the depth only, not the footprint.
+
+This is why the one experiment that has measured superradiance (Torres et al.,
+arXiv:1612.06180) used a **3 m × 1.5 m rectangular** tank. Meter-class is not an
+extrapolation; it is the published regime.
+
+### The independent variables
+
+| choose freely | app parameter | constrained by (not by scale) |
+| --- | --- | --- |
+| sonic-horizon anchor `r_h⁰` | `laboratoryHorizonRadiusMetres` | must sit well inside the tank (`r_h/R ≪ 1`) and well above the depth (`h/r_h ≪ 1`) |
+| layer depth `h` | `laboratoryLayerDepthMetres` | shallow-water validity `h/r_h ≪ 1`; the usable probe band shrinks as `h` grows (§6); the pump ramp grows as `h²` (below) |
+| tank radius `R` | `laboratoryTankRadiusMetres` | only enters the validity checks: the ergosurface must fit, and `r_h/R ≪ 1` keeps the far field still |
+| matched invariant | `analogueMatchedInvariant` | a physics choice, not a size (§2) |
+
+Everything on the black-hole side (`a`, `M(v)`, the accretion rate) is inherited from
+the simulation; everything else on the tank side is **computed, never chosen**.
+
+**Tank shape.** The ideal flow is axisymmetric, but the walls only enter through the
+far-field validity checks, so a **rectangular prism is fine** — it is what Torres et
+al. used, and it is the natural shape for sending plane waves across the vortex into
+an absorbing beach (a circular wall focuses reflections back onto the core). Two
+rules: the bottom must be **flat and level** (depth sets the speed of light, so a
+sloped floor is a spatially varying `c` — at 1 cm depth this is the genuinely hard
+part of building big), and set `laboratoryTankRadiusMetres` to the **distance from
+the drain to the nearest wall**, which is what the validity checks should judge.
+
+### The computation chain
+
+Given `r_h⁰`, `h`, `R`, the invariant choice, and the hole's `a` and `M(v)`
+(formulas from §2–§4; implementation `evaluateFluidVortexAnalogue`):
+
+```
+1. c    = √(g h)                              wave speed ("speed of light")
+2. L    = r_h⁰ / r+(M₀)                       metres per geometrized length
+   T    = L / c                               seconds per geometrized time
+3. r_h  = L · r+(M(v))                        sonic horizon, growing with M(v)
+4. C/D  = a/2M                (Ω_H matching)  — or √((2M/r+)² − 1) (r_E matching)
+5. D    = c · r_h                             drain strength      [m²/s]
+   C    = (C/D) · D                           circulation strength
+6. Q    = 2π h D                              pump setting  (×60000 → L/min)
+   Γ    = 2π C                                circulation the injectors supply
+7. Ω_h  = C / r_h²                            superradiance thresholds f_m = mΩ_h/2π
+   κ_h  = c / r_h                             surface gravity (frequency κ_h/2π)
+8. r_e  = r_h √(1 + (C/D)²)                   ergosurface
+   Δh   = h (1 + (C/D)²) / 2                  free-surface dip at the horizon (§4)
+9. dQ/dt = 2π g h² · dr+/dv                   the pump ramp — depends on the DEPTH
+                                              and the hole's growth ONLY, not on
+                                              the rig size (L and c/L cancel)
+10. re-check the §6 validity table.
+```
+
+Step 9 is worth staring at: build the tank twice as large and the pump *setting*
+grows, but the pump *ramp schedule* is identical — depth alone fixes it.
+
+### Worked example: the shipped rig vs a meter rig
+
+Both columns are the same black hole (`a = 0.82`, `M₀ = 1`, shipped accretion) at
+`v = 0`, computed by the shipped code; only the three free inputs differ.
+
+| quantity | how | shipped 80 cm rig | 1 m rig |
+| --- | --- | --- | --- |
+| **`r_h⁰` (chosen)** | free | 5 cm | 8 cm |
+| **`h` (chosen)** | free | 1 cm | 1 cm |
+| **`R` (chosen)** | free | 40 cm | 50 cm |
+| wave speed `c` | step 1 | 0.313 m/s | 0.313 m/s |
+| time scale `T` | step 2 | 0.102 s | 0.162 s |
+| horizon at `v = 0` | step 3 | 5.4 cm | 8.6 cm |
+| `C/D` | step 4 | 0.393 | 0.393 |
+| drain rate `Q` | step 6 | 63.4 L/min | 101.4 L/min |
+| circulation `Γ` | step 6 | 0.042 m²/s | 0.066 m²/s |
+| `Ω_h` | step 7 | 2.29 rad/s | 1.43 rad/s |
+| `m = 1` threshold | step 7 | 0.36 Hz | 0.23 Hz |
+| ergosurface | step 8 | 5.8 cm | 9.2 cm |
+| surface dip `Δh` | step 8 | 5.8 mm | 5.8 mm |
+| pump ramp `dQ/dt` | step 9 | 1.74 L/min per s | 1.74 L/min per s |
+| shallow ratio `h/r_h` | §6 | 0.186 | **0.116 (better)** |
+| Froude `r_h/R` | §6 | 0.134 | 0.172 |
+| dispersion ceiling | §6 | 3.17 Hz | 3.17 Hz |
+| all validity flags | §6 | pass | pass |
+
+The meter rig needs a ~100 L/min pump and a tray level to a millimeter over a meter —
+and in exchange the shallow-water approximation (the entire basis of the effective
+metric) is 40% better. Scaling up costs plumbing and buys physics.
+
 ## References
 
 - Unruh, *Experimental black-hole evaporation?*, PRL 46, 1351 (1981).

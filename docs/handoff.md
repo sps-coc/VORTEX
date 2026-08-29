@@ -319,7 +319,9 @@ Vaidya spacetime and not Kerr — arguably the headline plot of the whole simula
 
 ## 9. The fluid analogue in brief
 
-(Full treatment with derivations: `docs/analogue-mapping.md`. This is the summary.)
+(Full treatment with derivations: `docs/analogue-mapping.md`. This is the summary.
+In particular its §8 states which apparatus quantities are free choices — tank size
+included, with citations — and the ten-step chain that computes everything else.)
 
 **Why water works at all** (Unruh 1981; Visser gr-qc/9712010): in a shallow water
 layer of depth h, long surface waves travel at c = √(gh) regardless of wavelength.
